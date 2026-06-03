@@ -1171,18 +1171,23 @@ void MainWindow::setupPages()
     m_githubTokenEdit = new QLineEdit();
     m_githubTokenEdit->setPlaceholderText("ghp_... 或 ghs_...");
     m_githubTokenEdit->setEchoMode(QLineEdit::Password);
+    m_githubTokenEdit->setMinimumHeight(40);
+
     auto *toggleEchoBtn = new QPushButton();
-    toggleEchoBtn->setObjectName("secondaryBtn");
-    toggleEchoBtn->setIcon(loadSvgIcon("circle-dot"));
-    toggleEchoBtn->setFixedSize(36, 36);
-    toggleEchoBtn->setToolTip("显示 / 隐藏 Token");
+    toggleEchoBtn->setObjectName("tokenToggleBtn");
+    toggleEchoBtn->setIcon(loadSvgIcon("eye-off"));
+    toggleEchoBtn->setFixedSize(40, 40);
+    toggleEchoBtn->setCursor(Qt::PointingHandCursor);
+    toggleEchoBtn->setToolTip("显示 Token");
     connect(toggleEchoBtn, &QPushButton::clicked, this, [this, toggleEchoBtn]() {
         if (m_githubTokenEdit->echoMode() == QLineEdit::Password) {
             m_githubTokenEdit->setEchoMode(QLineEdit::Normal);
-            toggleEchoBtn->setIcon(loadSvgIcon("circle"));
+            toggleEchoBtn->setIcon(loadSvgIcon("eye"));
+            toggleEchoBtn->setToolTip("隐藏 Token");
         } else {
             m_githubTokenEdit->setEchoMode(QLineEdit::Password);
-            toggleEchoBtn->setIcon(loadSvgIcon("circle-dot"));
+            toggleEchoBtn->setIcon(loadSvgIcon("eye-off"));
+            toggleEchoBtn->setToolTip("显示 Token");
         }
     });
     tokenInputRow->addWidget(m_githubTokenEdit, 1);
@@ -1241,9 +1246,11 @@ void MainWindow::setupPages()
     verLabel->setObjectName("helperText");
     aboutRow->addWidget(verLabel);
     aboutRow->addStretch();
-    auto *githubLink = new QPushButton("GitHub 项目");
-    githubLink->setObjectName("secondaryBtn");
-    githubLink->setIcon(loadSvgIcon("external-link"));
+    auto *githubLink = new QPushButton("  MCheng404/OpenclawGuard");
+    githubLink->setObjectName("githubLinkBtn");
+    githubLink->setIcon(loadSvgIcon("github"));
+    githubLink->setCursor(Qt::PointingHandCursor);
+    githubLink->setToolTip("在浏览器中打开 GitHub 项目");
     connect(githubLink, &QPushButton::clicked, this, []() {
         QDesktopServices::openUrl(QUrl("https://github.com/MCheng404/OpenclawGuard"));
     });
