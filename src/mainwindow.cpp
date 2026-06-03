@@ -30,6 +30,7 @@
 #include <QClipboard>
 #include <QStatusBar>
 #include <QScrollArea>
+#include <QDesktopServices>
 #include <QGridLayout>
 #include <QSvgRenderer>
 #include <QPainter>
@@ -37,6 +38,46 @@
 #include <QStyledItemDelegate>
 #include <QMouseEvent>
 #include <functional>
+
+// ═══ 自绘阴影卡片（不受 widget 边界裁剪限制） ═══
+class ShadowCard : public QFrame {
+public:
+    explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
+        // 给阴影留出绘制空间
+        setContentsMargins(10, 10, 10, 10);
+        setAttribute(Qt::WA_TranslucentBackground);
+    }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, true);
+
+        // 绘制多层阴影（从外到内，模拟高斯模糊）
+        const int layers = 6;
+        const int spread = 10;
+        const int offsetX = 4, offsetY = 5;  // 45° 偏移
+        QRect cardRect(spread, spread, width() - spread*2, height() - spread*2);
+
+        for (int i = layers; i >= 0; --i) {
+            int alpha = 8 + (layers - i) * 4;  // 外层淡，内层浓
+            QColor shadowColor(0, 0, 0, alpha);
+            p.setPen(Qt::NoPen);
+            p.setBrush(shadowColor);
+            p.drawRoundedRect(cardRect.adjusted(
+                offsetX - i*2, offsetY - i*2,
+                offsetX + i*2, offsetY + i*2
+            ), 16, 16);
+        }
+
+        // 绘制卡片背景
+        auto cs = Theme::currentColors();
+        p.setBrush(cs.cardBg);
+        p.setPen(QPen(cs.borderColor, 1));
+        p.drawRoundedRect(cardRect, 14, 14);
+
+        p.end();
+    }
+};
 
 // 图标加载辅助
 static QIcon loadSvgIcon(const QString &name) {
@@ -301,10 +342,10 @@ QWidget* MainWindow::createPageHeader(const QString &title, const QString &desc)
 
 QFrame* MainWindow::createCard(QWidget *content)
 {
-    auto *card = new QFrame();
+    auto *card = new ShadowCard();
     card->setObjectName("card");
     auto *lay = new QVBoxLayout(card);
-    lay->setContentsMargins(16, 16, 16, 16);
+    lay->setContentsMargins(20, 20, 20, 20);  // 内容不被阴影遮挡
     lay->setSpacing(12);
     if (content) lay->addWidget(content);
     return card;
@@ -314,11 +355,11 @@ QFrame* MainWindow::createStatCard(const QString &iconName, const QString &label
                                     QLabel *&valueLabel, const QString &initialValue,
                                     QLabel **statusDot)
 {
-    auto *card = new QFrame();
+    auto *card = new ShadowCard();
     card->setObjectName("statCard");
     card->setMinimumHeight(130);
     auto *lay = new QVBoxLayout(card);
-    lay->setContentsMargins(22, 22, 22, 22);
+    lay->setContentsMargins(24, 24, 24, 24);
     lay->setSpacing(8);
 
     auto *topRow = new QHBoxLayout();
@@ -719,72 +760,83 @@ void MainWindow::setupPages()
     upLayout->setSpacing(16);
     upLayout->addWidget(createPageHeader("更新", "通过 npm 检查与安装 Openclaw 更新"));
 
-    // ------ Openclaw CLI 状态 ------
-    auto *ocStatusCard = createCard();
-    ocStatusCard->setProperty("pageTopCard", true);
-    auto *ocStatusInner = static_cast<QVBoxLayout*>(ocStatusCard->layout());
-    auto *ocTitle = new QLabel("Openclaw 当前状态");
-    ocTitle->setObjectName("sectionTitle");
-    auto *ocDesc = new QLabel("本机 Openclaw 安装方式、通道及版本信息");
-    ocDesc->setObjectName("helperText");
-    ocStatusInner->addWidget(ocTitle);
-    ocStatusInner->addWidget(ocDesc);
+    // ------ 状态概览（横排 4 格迷你卡片） ------
+    auto *statusGrid = new QHBoxLayout();
+    statusGrid->setSpacing(12);
 
-    auto *ocGrid = new QGridLayout();
-    ocGrid->setColumnStretch(1, 1);
-    ocGrid->setVerticalSpacing(6);
-    ocGrid->setHorizontalSpacing(16);
+    m_ocVersionLabel  = new QLabel(QStringLiteral("—"));
+    m_ocChannelLabel  = new QLabel(QStringLiteral("—"));
+    m_ocInstallLabel  = new QLabel(QStringLiteral("—"));
+    m_ocAvailableLabel = new QLabel(QStringLiteral("—"));
 
-    auto addStatusRow = [&](int r, const QString &label, QLabel *&valLabel, const QString &initial) {
-        auto *lbl = new QLabel(label);
-        lbl->setObjectName("fieldLabel");
-        valLabel = new QLabel(initial);
-        valLabel->setObjectName("helperText");
+    auto makeStatusMini = [&](const QString &iconName, const QString &title, QLabel *valLabel) -> QFrame * {
+        auto *c = createCard();
+        c->setProperty("statCard", true);
+        auto *inner = static_cast<QVBoxLayout*>(c->layout());
+        inner->setSpacing(4);
+        inner->setContentsMargins(14, 12, 14, 12);
+        auto *hdr = new QHBoxLayout();
+        hdr->setSpacing(6);
+        auto *ic = new QLabel();
+        ic->setPixmap(loadSvgIcon(iconName).pixmap(16, 16));
+        ic->setFixedSize(20, 20);
+        auto *ttl = new QLabel(title);
+        ttl->setObjectName("helperText");
+        ttl->setStyleSheet("font-size: 11px;");
+        hdr->addWidget(ic);
+        hdr->addWidget(ttl);
+        hdr->addStretch();
+        inner->addLayout(hdr);
+        valLabel->setObjectName("miniStatValue");
         valLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-        ocGrid->addWidget(lbl, r, 0, Qt::AlignTop);
-        ocGrid->addWidget(valLabel, r, 1);
+        valLabel->setWordWrap(true);
+        inner->addWidget(valLabel);
+        return c;
     };
 
-    addStatusRow(0, "当前版本", m_ocVersionLabel, "—");
-    addStatusRow(1, "更新通道", m_ocChannelLabel, "—");
-    addStatusRow(2, "安装方式", m_ocInstallLabel, "—");
-    addStatusRow(3, "可用更新", m_ocAvailableLabel, "—");
-    ocStatusInner->addLayout(ocGrid);
-    upLayout->addWidget(ocStatusCard);
+    statusGrid->addWidget(makeStatusMini("server",         "当前版本", m_ocVersionLabel));
+    statusGrid->addWidget(makeStatusMini("download-cloud",  "更新通道", m_ocChannelLabel));
+    statusGrid->addWidget(makeStatusMini("settings",        "安装方式", m_ocInstallLabel));
+    statusGrid->addWidget(makeStatusMini("refresh-cw",      "可用更新", m_ocAvailableLabel));
+    upLayout->addLayout(statusGrid);
 
-    // ------ CLI 操作 ------
+    // ------ 操作区（紧凑：标题 + 按钮同一行） ------
     auto *cliCard = createCard();
     auto *cliInner = static_cast<QVBoxLayout*>(cliCard->layout());
+    cliInner->setSpacing(10);
+
+    auto *cliTopRow = new QHBoxLayout();
+    cliTopRow->setSpacing(8);
+    auto *cliIcon = new QLabel();
+    cliIcon->setPixmap(loadSvgIcon("download-cloud").pixmap(18, 18));
+    cliIcon->setFixedSize(22, 22);
     auto *cliTitle = new QLabel("更新操作");
     cliTitle->setObjectName("sectionTitle");
-    auto *cliDesc = new QLabel("通过 npm 执行 Openclaw 更新，支持 latest/beta 通道");
-    cliDesc->setObjectName("helperText");
-    cliInner->addWidget(cliTitle);
-    cliInner->addWidget(cliDesc);
-
-    auto *cliBtnRow = new QHBoxLayout();
     m_channelCombo = new QComboBox();
     m_channelCombo->addItems({"当前通道", "stable", "beta"});
-    m_channelCombo->setFixedWidth(130);
+    m_channelCombo->setFixedWidth(120);
+    m_channelCombo->setObjectName("channelCombo");
     m_fetchUpdateBtn = new QPushButton("检查状态");
     m_fetchUpdateBtn->setObjectName("secondaryBtn");
     m_fetchUpdateBtn->setIcon(loadSvgIcon("refresh-cw"));
     m_cliUpdateBtn = new QPushButton("执行更新");
     m_cliUpdateBtn->setObjectName("primaryBtn");
     m_cliUpdateBtn->setIcon(loadSvgIcon("download-cloud"));
-    cliBtnRow->addWidget(new QLabel("通道"));
-    cliBtnRow->addWidget(m_channelCombo);
-    cliBtnRow->addWidget(m_fetchUpdateBtn);
-    cliBtnRow->addWidget(m_cliUpdateBtn);
-    cliBtnRow->addStretch();
-    cliInner->addLayout(cliBtnRow);
+    cliTopRow->addWidget(cliIcon);
+    cliTopRow->addWidget(cliTitle);
+    cliTopRow->addStretch();
+    cliTopRow->addWidget(new QLabel("通道"));
+    cliTopRow->addWidget(m_channelCombo);
+    cliTopRow->addWidget(m_fetchUpdateBtn);
+    cliTopRow->addWidget(m_cliUpdateBtn);
+    cliInner->addLayout(cliTopRow);
 
     m_ocDryRunOutput = new QTextEdit();
     m_ocDryRunOutput->setObjectName("dryRunOutput");
     m_ocDryRunOutput->setReadOnly(true);
-    m_ocDryRunOutput->setPlaceholderText("点击「检查状态」查看 Openclaw 更新状态与 dry-run 结果...");
-    m_ocDryRunOutput->setMinimumHeight(140);
-    m_ocDryRunOutput->setMaximumHeight(300);
+    m_ocDryRunOutput->setPlaceholderText("点击「检查状态」查看 Openclaw 更新状态...");
+    m_ocDryRunOutput->setMinimumHeight(100);
+    m_ocDryRunOutput->setMaximumHeight(240);
     m_ocDryRunOutput->setFont(QFont("JetBrains Mono, Consolas, monospace", 10));
     m_ocDryRunOutput->setFrameShape(QFrame::NoFrame);
     cliInner->addWidget(m_ocDryRunOutput);
@@ -792,12 +844,28 @@ void MainWindow::setupPages()
 
     m_downloadProgress = new QProgressBar();
     m_downloadProgress->setVisible(false);
-    m_downloadProgress->setFixedHeight(8);
+    m_downloadProgress->setFixedHeight(6);
+    m_downloadProgress->setObjectName("downloadProgress");
     upLayout->addWidget(m_downloadProgress);
 
+    // ------ Releases 列表 ------
     auto *upTableCard = createCard();
     auto *upTblInner = static_cast<QVBoxLayout*>(upTableCard->layout());
-    m_updateEmptyState = new QLabel("暂无更新记录\n点击“检查更新”拉取 GitHub Releases");
+    upTblInner->setSpacing(8);
+
+    auto *tblHeader = new QHBoxLayout();
+    tblHeader->setSpacing(6);
+    auto *tblIcon = new QLabel();
+    tblIcon->setPixmap(loadSvgIcon("list").pixmap(16, 16));
+    tblIcon->setFixedSize(20, 20);
+    auto *tblTitle = new QLabel("GitHub Releases");
+    tblTitle->setObjectName("sectionTitle");
+    tblHeader->addWidget(tblIcon);
+    tblHeader->addWidget(tblTitle);
+    tblHeader->addStretch();
+    upTblInner->addLayout(tblHeader);
+
+    m_updateEmptyState = new QLabel("暂无更新记录\n点击\"检查更新\"拉取 GitHub Releases");
     m_updateEmptyState->setObjectName("emptyState");
     m_updateEmptyState->setAlignment(Qt::AlignCenter);
     m_updateEmptyState->setVisible(false);
@@ -821,7 +889,7 @@ void MainWindow::setupPages()
     m_updateTable->horizontalHeader()->setHighlightSections(false);
     m_updateTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_updateTable->verticalHeader()->setVisible(false);
-    m_updateTable->verticalHeader()->setDefaultSectionSize(48);
+    m_updateTable->verticalHeader()->setDefaultSectionSize(44);
     m_updateTable->setShowGrid(false);
     m_updateTable->setAlternatingRowColors(true);
     upTblInner->addWidget(m_updateTable);
@@ -831,7 +899,6 @@ void MainWindow::setupPages()
     upScrollArea->setWidget(upScrollContent);
     upOuterLayout->addWidget(upScrollArea);
     m_pages->addWidget(upPage);
-
     // ====== Page 4: 环境 ======
     auto *envPage = new QWidget();
     auto *envLayout = new QVBoxLayout(envPage);
@@ -911,6 +978,7 @@ void MainWindow::setupPages()
     stScroll->setWidgetResizable(true);
     stScroll->setFrameShape(QFrame::NoFrame);
     auto *stInner = new QWidget();
+    stInner->setMinimumWidth(500);
     auto *stLayout = new QVBoxLayout(stInner);
     stLayout->setContentsMargins(24, 24, 24, 24);
     stLayout->setSpacing(16);
@@ -920,82 +988,145 @@ void MainWindow::setupPages()
     auto *baseCard = createCard();
     baseCard->setProperty("pageTopCard", true);
     auto *baseInner = static_cast<QVBoxLayout*>(baseCard->layout());
+    baseInner->setSpacing(12);
+    auto *baseHeader = new QHBoxLayout();
+    baseHeader->setSpacing(8);
+    auto *baseIcon = new QLabel();
+    baseIcon->setPixmap(loadSvgIcon("sun").pixmap(18, 18));
+    baseIcon->setFixedSize(22, 22);
     auto *baseTitle = new QLabel("基础偏好");
     baseTitle->setObjectName("sectionTitle");
+    baseHeader->addWidget(baseIcon);
+    baseHeader->addWidget(baseTitle);
+    baseHeader->addStretch();
+    baseInner->addLayout(baseHeader);
     auto *baseDesc = new QLabel("统一管理主题、启动行为与常用应用偏好");
     baseDesc->setObjectName("helperText");
-    baseInner->addWidget(baseTitle);
     baseInner->addWidget(baseDesc);
 
-    m_themeCombo = new QComboBox();
-    m_themeCombo->addItems({"跟随系统", "浅色", "深色"});
     auto *themeRow = new QHBoxLayout();
+    themeRow->setSpacing(12);
     auto *themeLabel = new QLabel("界面主题");
     themeLabel->setObjectName("fieldLabel");
+    themeLabel->setFixedWidth(80);
+    m_themeCombo = new QComboBox();
+    m_themeCombo->addItems({"跟随系统", "浅色", "深色"});
+    m_themeCombo->setMinimumWidth(160);
     themeRow->addWidget(themeLabel);
     themeRow->addWidget(m_themeCombo);
     themeRow->addStretch();
     baseInner->addLayout(themeRow);
 
-    m_autoStartCheck = new QCheckBox("开机自动启动");
-    baseInner->addWidget(m_autoStartCheck);
+    auto *autoRow = new QHBoxLayout();
+    autoRow->setSpacing(12);
+    auto *autoLabel = new QLabel("开机自启");
+    autoLabel->setObjectName("fieldLabel");
+    autoLabel->setFixedWidth(80);
+    m_autoStartCheck = new QCheckBox("登录 Windows 时自动启动");
+    autoRow->addWidget(autoLabel);
+    autoRow->addWidget(m_autoStartCheck);
+    autoRow->addStretch();
+    baseInner->addLayout(autoRow);
     stLayout->addWidget(baseCard);
 
     // 智能拉起
     auto *smartCard = createCard();
     auto *smartInner = static_cast<QVBoxLayout*>(smartCard->layout());
+    smartInner->setSpacing(12);
+    auto *smartHeader = new QHBoxLayout();
+    smartHeader->setSpacing(8);
+    auto *smartIcon = new QLabel();
+    smartIcon->setPixmap(loadSvgIcon("shield-check").pixmap(18, 18));
+    smartIcon->setFixedSize(22, 22);
     auto *smartTitle = new QLabel("智能拉起策略");
     smartTitle->setObjectName("sectionTitle");
-    smartInner->addWidget(smartTitle);
-
+    smartHeader->addWidget(smartIcon);
+    smartHeader->addWidget(smartTitle);
+    smartHeader->addStretch();
+    smartInner->addLayout(smartHeader);
     auto *smartDesc = new QLabel("当 CPU 或内存占用超过阈值时，守护进程会延迟拉起，待系统空闲后自动恢复");
     smartDesc->setObjectName("helperText");
     smartInner->addWidget(smartDesc);
 
-    auto *cpuRow = new QHBoxLayout();
-    cpuRow->addWidget(new QLabel("CPU 阈值:"));
+    auto *thresholdRow = new QHBoxLayout();
+    thresholdRow->setSpacing(24);
+    auto *cpuGroup = new QHBoxLayout();
+    cpuGroup->setSpacing(8);
+    auto *cpuLabel = new QLabel("CPU 阈值");
+    cpuLabel->setObjectName("fieldLabel");
     m_cpuSpin = new QSpinBox();
     m_cpuSpin->setSuffix("%");
     m_cpuSpin->setRange(10, 100);
-    m_cpuSpin->setFixedWidth(80);
+    m_cpuSpin->setFixedWidth(90);
     m_cpuSpin->setValue(AppSettings.smartGuardCpuThreshold());
-    cpuRow->addWidget(m_cpuSpin);
-    cpuRow->addStretch();
-    smartInner->addLayout(cpuRow);
-
-    auto *memRow = new QHBoxLayout();
-    memRow->addWidget(new QLabel("内存阈值:"));
+    cpuGroup->addWidget(cpuLabel);
+    cpuGroup->addWidget(m_cpuSpin);
+    thresholdRow->addLayout(cpuGroup);
+    auto *memGroup = new QHBoxLayout();
+    memGroup->setSpacing(8);
+    auto *memLabel = new QLabel("内存阈值");
+    memLabel->setObjectName("fieldLabel");
     m_memSpin = new QSpinBox();
     m_memSpin->setSuffix("%");
     m_memSpin->setRange(10, 100);
-    m_memSpin->setFixedWidth(80);
+    m_memSpin->setFixedWidth(90);
     m_memSpin->setValue(AppSettings.smartGuardMemThreshold());
-    memRow->addWidget(m_memSpin);
-    memRow->addStretch();
-    smartInner->addLayout(memRow);
+    memGroup->addWidget(memLabel);
+    memGroup->addWidget(m_memSpin);
+    thresholdRow->addLayout(memGroup);
+    thresholdRow->addStretch();
+    smartInner->addLayout(thresholdRow);
     stLayout->addWidget(smartCard);
 
     // 更新与网络
     auto *tokenCard = createCard();
     auto *tokenInner = static_cast<QVBoxLayout*>(tokenCard->layout());
+    tokenInner->setSpacing(12);
+    auto *tokenHeader = new QHBoxLayout();
+    tokenHeader->setSpacing(8);
+    auto *tokenIcon = new QLabel();
+    tokenIcon->setPixmap(loadSvgIcon("settings").pixmap(18, 18));
+    tokenIcon->setFixedSize(22, 22);
     auto *tokenTitle = new QLabel("更新与网络");
     tokenTitle->setObjectName("sectionTitle");
-    tokenInner->addWidget(tokenTitle);
-
-    auto *tokenDesc = new QLabel("用于缓解 GitHub API 限流，可填写个人访问令牌；仅在检查与拉取更新时使用");
+    tokenHeader->addWidget(tokenIcon);
+    tokenHeader->addWidget(tokenTitle);
+    tokenHeader->addStretch();
+    tokenInner->addLayout(tokenHeader);
+    auto *tokenDesc = new QLabel("GitHub Token 用于缓解 API 限流，仅在检查与拉取更新时使用");
     tokenDesc->setObjectName("helperText");
     tokenInner->addWidget(tokenDesc);
 
+    auto *tokenInputRow = new QHBoxLayout();
+    tokenInputRow->setSpacing(8);
     m_githubTokenEdit = new QLineEdit();
     m_githubTokenEdit->setPlaceholderText("ghp_... 或 ghs_...");
     m_githubTokenEdit->setEchoMode(QLineEdit::Password);
-    tokenInner->addWidget(m_githubTokenEdit);
+    auto *toggleEchoBtn = new QPushButton();
+    toggleEchoBtn->setObjectName("secondaryBtn");
+    toggleEchoBtn->setIcon(loadSvgIcon("circle-dot"));
+    toggleEchoBtn->setFixedSize(36, 36);
+    toggleEchoBtn->setToolTip("显示 / 隐藏 Token");
+    connect(toggleEchoBtn, &QPushButton::clicked, this, [this, toggleEchoBtn]() {
+        if (m_githubTokenEdit->echoMode() == QLineEdit::Password) {
+            m_githubTokenEdit->setEchoMode(QLineEdit::Normal);
+            toggleEchoBtn->setIcon(loadSvgIcon("circle"));
+        } else {
+            m_githubTokenEdit->setEchoMode(QLineEdit::Password);
+            toggleEchoBtn->setIcon(loadSvgIcon("circle-dot"));
+        }
+    });
+    tokenInputRow->addWidget(m_githubTokenEdit, 1);
+    tokenInputRow->addWidget(toggleEchoBtn);
+    tokenInner->addLayout(tokenInputRow);
 
     auto *tokenBtnRow = new QHBoxLayout();
+    tokenBtnRow->setSpacing(8);
     auto *saveTokenBtn = new QPushButton("保存 Token");
-    saveTokenBtn->setObjectName("secondaryBtn");
-    auto *testTokenBtn = new QPushButton("测试 Token");
+    saveTokenBtn->setObjectName("primaryBtn");
+    auto *testTokenBtn = new QPushButton("测试连接");
     testTokenBtn->setObjectName("secondaryBtn");
+    testTokenBtn->setIcon(loadSvgIcon("refresh-cw"));
     tokenBtnRow->addWidget(saveTokenBtn);
     tokenBtnRow->addWidget(testTokenBtn);
     tokenBtnRow->addStretch();
@@ -1018,6 +1149,39 @@ void MainWindow::setupPages()
     });
 
     stLayout->addWidget(tokenCard);
+
+    // 关于
+    auto *aboutCard = createCard();
+    auto *aboutInner = static_cast<QVBoxLayout*>(aboutCard->layout());
+    aboutInner->setSpacing(10);
+    auto *aboutHeader = new QHBoxLayout();
+    aboutHeader->setSpacing(8);
+    auto *aboutIcon = new QLabel();
+    aboutIcon->setPixmap(loadSvgIcon("list").pixmap(18, 18));
+    aboutIcon->setFixedSize(22, 22);
+    auto *aboutTitle = new QLabel("关于");
+    aboutTitle->setObjectName("sectionTitle");
+    aboutHeader->addWidget(aboutIcon);
+    aboutHeader->addWidget(aboutTitle);
+    aboutHeader->addStretch();
+    aboutInner->addLayout(aboutHeader);
+
+    auto *aboutRow = new QHBoxLayout();
+    aboutRow->setSpacing(12);
+    auto *verLabel = new QLabel(QStringLiteral("版本 1.0.0"));
+    verLabel->setObjectName("helperText");
+    aboutRow->addWidget(verLabel);
+    aboutRow->addStretch();
+    auto *githubLink = new QPushButton("GitHub 项目");
+    githubLink->setObjectName("secondaryBtn");
+    githubLink->setIcon(loadSvgIcon("external-link"));
+    connect(githubLink, &QPushButton::clicked, this, []() {
+        QDesktopServices::openUrl(QUrl("https://github.com/MCheng404/OpenclawGuard"));
+    });
+    aboutRow->addWidget(githubLink);
+    aboutInner->addLayout(aboutRow);
+    stLayout->addWidget(aboutCard);
+
     stLayout->addStretch();
     stScroll->setWidget(stInner);
     stOuterLayout->addWidget(stScroll);

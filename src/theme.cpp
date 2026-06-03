@@ -91,7 +91,7 @@ void Theme::applyTheme(const QString &themeName)
     if (actual == "dark") {
         app->setStyle(QStyleFactory::create("Fusion"));
         QPalette p;
-        p.setColor(QPalette::Window,          cs.mainBg);
+        p.setColor(QPalette::Window,          QColor(0, 0, 0, 0));  // transparent for Mica
         p.setColor(QPalette::WindowText,      cs.textPrimary);
         p.setColor(QPalette::Base,            cs.cardBg);
         p.setColor(QPalette::AlternateBase,   cs.mainBg.lighter(120));
@@ -111,7 +111,7 @@ void Theme::applyTheme(const QString &themeName)
     } else {
         app->setStyle(QStyleFactory::create("Fusion"));
         QPalette p;
-        p.setColor(QPalette::Window,          cs.mainBg);
+        p.setColor(QPalette::Window,          QColor(0, 0, 0, 0));  // transparent for Mica
         p.setColor(QPalette::WindowText,      cs.textPrimary);
         p.setColor(QPalette::Base,            cs.cardBg);
         p.setColor(QPalette::AlternateBase,   QColor("#f5f5f5"));
@@ -144,7 +144,7 @@ QString Theme::darkStyleSheet()
         "QLabel#sidebarMetaLabel { color: #7d84a1; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }\n"
         "QLabel#sidebarMetaValue { color: #dfe4f6; font-size: 12px; font-weight: 600; }\n"
         "QLabel#versionLabel { color: #7d84a1; font-size: 11px; padding-bottom: 2px; }\n"
-        "QWidget#sidebar { background: rgba(23,25,43,0.72); border-right: 1px solid rgba(255,255,255,0.06); }\n"
+        "QWidget#sidebar { background: rgba(23,25,43,0.88); border-right: 1px solid rgba(255,255,255,0.06); }\n"
         "QFrame#sidebarBrandCard { background: rgba(79,140,255,0.10); border: 1px solid rgba(79,140,255,0.18); border-radius: 16px; }\n"
         "QFrame#sidebarBrandCard[compact=\"true\"] { border-radius: 14px; }\n"
         "QFrame#sidebarContextCard { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; }\n"
@@ -157,15 +157,15 @@ QString Theme::darkStyleSheet()
         "QLabel#pageTitle { font-size: 24px; font-weight: 700; color: #e2e4f0; letter-spacing: -0.5px; }\n"
         "QLabel#pageDesc { color: #8b8fa3; font-size: 12px; margin-top: 2px; }\n"
         "QLabel#sectionTitle { font-size: 12px; font-weight: 700; color: #8b8fa3; padding: 0 0 2px 2px; text-transform: uppercase; letter-spacing: 0.5px; }\n"
-        "QFrame#card { background: rgba(30,32,64,0.85); border-radius: 14px; border: 1px solid rgba(79,140,255,0.10); }\n"
-        "QFrame#card:hover { border: 1px solid rgba(79,140,255,0.18); }\n"
-        "QFrame#statCard { background: rgba(30,32,64,0.85); border-radius: 14px; border: 1px solid rgba(79,140,255,0.10); }\n"
-        "QFrame#statCard:hover { border: 1px solid rgba(79,140,255,0.18); background: rgba(35,38,69,0.90); }\n"
+        "QFrame#card { background: transparent; border: none; }\n"
+        "QFrame#statCard { background: transparent; border: none; }\n"
+        "QFrame#statCard:hover { border: none; }\n"
         "QFrame[dashboardCard=\"true\"] { border: 1px solid rgba(79,140,255,0.10); }\n"
         "QFrame[dashboardCard=\"true\"]:hover { border: 1px solid rgba(79,140,255,0.18); }\n"
         "QFrame[pageTopCard=\"true\"] { border: 1px solid rgba(79,140,255,0.14); background: rgba(79,140,255,0.03); }\n"
         "QFrame[pageTopCard=\"true\"]:hover { border: 1px solid rgba(79,140,255,0.22); background: rgba(79,140,255,0.05); }\n"
         "QLabel#statValue { font-size: 30px; font-weight: 300; color: #e2e4f0; font-family: \"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace; }\n"
+        "QLabel#miniStatValue { font-size: 14px; font-weight: 600; color: #e2e4f0; }\n"
         "QLabel#statLabel { font-size: 11px; color: #8b8fa3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }\n"
         "QLabel#statusPill { color: #8fb4ff; background: rgba(79,140,255,0.12); border: 1px solid rgba(79,140,255,0.18); border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; }\n"
         "QLabel#statusBadge { border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; }\n"
@@ -251,7 +251,7 @@ QString Theme::lightStyleSheet()
         "QLabel#sidebarMetaLabel { color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }\n"
         "QLabel#sidebarMetaValue { color: #1e293b; font-size: 12px; font-weight: 600; }\n"
         "QLabel#versionLabel { color: #64748b; font-size: 11px; padding-bottom: 2px; }\n"
-        "QWidget#sidebar { background: rgba(238,241,248,0.78); border-right: 1px solid rgba(0,0,0,0.06); }\n"
+        "QWidget#sidebar { background: rgba(238,241,248,0.92); border-right: 1px solid rgba(0,0,0,0.06); }\n"
         "QFrame#sidebarBrandCard { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.14); border-radius: 16px; }\n"
         "QFrame#sidebarBrandCard[compact=\"true\"] { border-radius: 14px; }\n"
         "QFrame#sidebarContextCard { background: rgba(255,255,255,0.72); border: 1px solid rgba(59,130,246,0.08); border-radius: 16px; }\n"
@@ -264,15 +264,15 @@ QString Theme::lightStyleSheet()
         "QLabel#pageTitle { font-size: 24px; font-weight: 700; color: #1e293b; letter-spacing: -0.5px; }\n"
         "QLabel#pageDesc { color: #64748b; font-size: 12px; margin-top: 2px; }\n"
         "QLabel#sectionTitle { font-size: 12px; font-weight: 700; color: #64748b; padding: 0 0 2px 2px; text-transform: uppercase; letter-spacing: 0.5px; }\n"
-        "QFrame#card { background: rgba(255,255,255,0.88); border-radius: 14px; border: 1px solid rgba(59,130,246,0.10); }\n"
-        "QFrame#card:hover { border: 1px solid rgba(59,130,246,0.16); }\n"
-        "QFrame#statCard { background: #ffffff; border-radius: 14px; border: 1px solid rgba(59,130,246,0.10); }\n"
-        "QFrame#statCard:hover { border: 1px solid rgba(59,130,246,0.18); background: #f9fbff; }\n"
+        "QFrame#card { background: transparent; border: none; }\n"
+        "QFrame#statCard { background: transparent; border: none; }\n"
+        "QFrame#statCard:hover { border: none; }\n"
         "QFrame[dashboardCard=\"true\"] { border: 1px solid rgba(59,130,246,0.10); }\n"
         "QFrame[dashboardCard=\"true\"]:hover { border: 1px solid rgba(59,130,246,0.18); }\n"
         "QFrame[pageTopCard=\"true\"] { border: 1px solid rgba(59,130,246,0.14); background: rgba(59,130,246,0.03); }\n"
         "QFrame[pageTopCard=\"true\"]:hover { border: 1px solid rgba(59,130,246,0.22); background: rgba(59,130,246,0.05); }\n"
         "QLabel#statValue { font-size: 30px; font-weight: 300; color: #1e293b; font-family: \"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace; }\n"
+        "QLabel#miniStatValue { font-size: 14px; font-weight: 600; color: #1e293b; }\n"
         "QLabel#statLabel { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }\n"
         "QLabel#statusPill { color: #2563eb; background: rgba(59,130,246,0.10); border: 1px solid rgba(59,130,246,0.16); border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; }\n"
         "QLabel#statusBadge { border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; }\n"
