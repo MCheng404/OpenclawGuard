@@ -536,7 +536,7 @@ void MainWindow::setupSidebar(QHBoxLayout *mainLayout)
     themeMeta->addWidget(themeTitle);
     themeMeta->addWidget(m_sidebarThemeLabel);
 
-    m_versionLabel = new QLabel("v1.0.0");
+    m_versionLabel = new QLabel(QStringLiteral("v" APP_VERSION));
     m_versionLabel->setObjectName("versionLabel");
 
     bottomRow->addWidget(m_themeBtn, 0, Qt::AlignTop);
@@ -1242,7 +1242,7 @@ void MainWindow::setupPages()
 
     auto *aboutRow = new QHBoxLayout();
     aboutRow->setSpacing(12);
-    auto *verLabel = new QLabel(QStringLiteral("版本 1.0.0"));
+    auto *verLabel = new QLabel(QStringLiteral("版本 " APP_VERSION));
     verLabel->setObjectName("helperText");
     aboutRow->addWidget(verLabel);
     aboutRow->addStretch();

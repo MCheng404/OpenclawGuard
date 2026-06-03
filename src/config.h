@@ -7,6 +7,11 @@
 #include <QTextStream>
 #include <QStandardPaths>
 
+// 版本号
+#ifndef APP_VERSION
+#define APP_VERSION "1.1.1"
+#endif
+
 // Debug 日志宏
 #if OPENCLAWGUARD_DEBUG
 #define DBG_FILE() ([]() -> QFile* { \

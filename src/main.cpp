@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     app.setQuitOnLastWindowClosed(false);
     app.setApplicationName("OpenclawGuard");
     app.setOrganizationName("OpenclawGuard");
-    app.setApplicationVersion("1.1.1");
+    app.setApplicationVersion(APP_VERSION);
     // DPI 缩放兼容
     app.setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
     app.setStyle("windows11");
