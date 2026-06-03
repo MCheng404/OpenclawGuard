@@ -43,7 +43,7 @@
 class ShadowCard : public QFrame {
 public:
     explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
-        setContentsMargins(14, 14, 14, 14);
+        setContentsMargins(16, 16, 16, 16);
         setAttribute(Qt::WA_TranslucentBackground);
     }
 protected:
@@ -51,27 +51,29 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
-        const int m = 14;  // 阴影边距
+        const int m = 16;
         QRect cardRect(m, m, width() - m*2, height() - m*2);
-        int cr = 14;  // 卡片圆角半径
+        int cr = 14;
 
-        // ── 用径向渐变绘制四个角 + 四条边的柔和阴影 ──
-        auto drawShadow = [&](int dx, int dy, int radius, int alpha) {
+        // 多层径向渐变阴影（外层淡 + 内层浓）
+        auto drawShadowLayer = [&](int dx, int dy, int radius, int alpha) {
             QRadialGradient g(cardRect.center().x() + dx,
                               cardRect.center().y() + dy,
                               radius);
             g.setColorAt(0.0, QColor(0, 0, 0, alpha));
-            g.setColorAt(0.6, QColor(0, 0, 0, alpha / 3));
+            g.setColorAt(0.5, QColor(0, 0, 0, alpha * 0.4));
             g.setColorAt(1.0, QColor(0, 0, 0, 0));
             p.setPen(Qt::NoPen);
             p.setBrush(g);
             p.drawRect(0, 0, width(), height());
         };
 
-        // 45° 方向偏移阴影（右下）
-        drawShadow(3, 3, qMin(width(), height()) * 0.6, 35);
+        // 外层大范围淡阴影
+        drawShadowLayer(4, 5, qMax(width(), height()) * 0.7, 22);
+        // 内层紧凑浓阴影
+        drawShadowLayer(3, 4, qMin(width(), height()) * 0.45, 55);
 
-        // ── 绘制卡片背景 ──
+        // 绘制卡片背景
         auto cs = Theme::currentColors();
         p.setBrush(cs.cardBg);
         p.setPen(QPen(cs.borderColor, 1));
@@ -1250,9 +1252,11 @@ void MainWindow::setupConnections()
             this, &MainWindow::onGatewayOnlineChanged);
     connect(m_gateway, &GatewayManager::gatewayStarted, this, [this]() {
         updateStatusBar("网关已启动");
+        m_tray->updateGatewayStatus(true, QString::number(m_gateway->port()));
     });
     connect(m_gateway, &GatewayManager::gatewayStopped, this, [this]() {
         updateStatusBar("网关已停止");
+        m_tray->updateGatewayStatus(false);
     });
     connect(m_gateway, &GatewayManager::gatewayCrashed,
             this, &MainWindow::onGatewayCrashed);
@@ -1543,6 +1547,9 @@ void MainWindow::onGatewayOnlineChanged(bool online)
             m_dashPulseOpacity->setOpacity(1.0);
         }
     }
+
+    // 更新托盘状态
+    m_tray->updateGatewayStatus(online, QString::number(m_gateway->port()));
 }
 
 void MainWindow::onGatewayCrashed()

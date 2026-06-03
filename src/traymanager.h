@@ -13,6 +13,7 @@ public:
 
     void show();
     void showMessage(const QString &title, const QString &msg);
+    void updateGatewayStatus(bool online, const QString &port = QString());
 
 signals:
     void showWindowRequested();
@@ -29,6 +30,7 @@ private:
     QMenu           *m_menu = nullptr;
     MainWindow      *m_window = nullptr;
     QAction *m_showAction = nullptr;
+    QAction *m_statusAction = nullptr;
     QAction *m_restartAction = nullptr;
     QAction *m_quitAction = nullptr;
 };
