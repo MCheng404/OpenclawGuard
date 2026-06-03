@@ -1,0 +1,49 @@
+<Window
+    x:Class="OpenclawGuard.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenclawGuard"
+    Title="OpenclawGuard"
+    ExtendsContentIntoTitleBar="True"
+    Height="660" Width="1020">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt"/>
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="32" VerticalAlignment="Top">
+            <TextBlock Text="OpenclawGuard"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </Grid>
+
+        <NavigationView x:Name="NavView"
+                        Grid.Row="1"
+                        PaneDisplayMode="LeftCompact"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="True"
+                        OpenPaneLength="200"
+                        CompactPaneLength="48"
+                        SelectionChanged="NavView_SelectionChanged"
+                        ItemInvoked="NavView_ItemInvoked">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Home"         Content="Dashboard"  Tag="dashboard"/>
+                <NavigationViewItem Icon="Globe"        Content="Gateway"    Tag="gateway"/>
+                <NavigationViewItem Icon="Shield"       Content="Guard"      Tag="guard"/>
+                <NavigationViewItem Icon="Download"     Content="Updates"    Tag="updates"/>
+                <NavigationViewItem Icon="Setting"      Content="Settings"   Tag="settings"/>
+            </NavigationView.MenuItems>
+
+            <Frame x:Name="ContentFrame"/>
+        </NavigationView>
+    </Grid>
+</Window>

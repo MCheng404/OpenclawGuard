@@ -1,0 +1,9 @@
+<Page x:Class="OpenclawGuard.Pages.UpdatesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Spacing="16" Margin="32">
+        <TextBlock Text="Updates" Style="{ThemeResource TitleTextBlockStyle}"/>
+        <TextBlock Text="GitHub Releases"/>
+        <Button Content="Refresh" Width="120" HorizontalAlignment="Left"/>
+    </StackPanel>
+</Page>

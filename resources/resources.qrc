@@ -1,0 +1,28 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="qml/main.qml">../qml/main.qml</file>
+        <file alias="qml/MainWindow.qml">../qml/MainWindow.qml</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>icons/layout-dashboard.svg</file>
+        <file>icons/server.svg</file>
+        <file>icons/shield-check.svg</file>
+        <file>icons/download-cloud.svg</file>
+        <file>icons/cpu.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/sun.svg</file>
+        <file>icons/moon.svg</file>
+        <file>icons/play.svg</file>
+        <file>icons/square.svg</file>
+        <file>icons/rotate-cw.svg</file>
+        <file>icons/folder-open.svg</file>
+        <file>icons/plus.svg</file>
+        <file>icons/list.svg</file>
+        <file>icons/trash-2.svg</file>
+        <file>icons/refresh-cw.svg</file>
+        <file>icons/search.svg</file>
+        <file>icons/circle.svg</file>
+        <file>icons/circle-dot.svg</file>
+        <file>icons/tray.svg</file>
+    </qresource>
+</RCC>

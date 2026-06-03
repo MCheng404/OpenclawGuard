@@ -1,0 +1,6 @@
+DashboardPage 1.0 pages/DashboardPage.qml
+GatewayPage   1.0 pages/GatewayPage.qml
+GuardPage     1.0 pages/GuardPage.qml
+UpdatesPage   1.0 pages/UpdatesPage.qml
+EnvPage       1.0 pages/EnvPage.qml
+SettingsPage  1.0 pages/SettingsPage.qml
