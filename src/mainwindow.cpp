@@ -34,16 +34,17 @@
 #include <QGridLayout>
 #include <QSvgRenderer>
 #include <QPainter>
+#include <QPainterPath>
 #include <QIcon>
 #include <QStyledItemDelegate>
 #include <QMouseEvent>
 #include <functional>
 
-// ═══ 自绘阴影卡片（径向渐变模拟高斯模糊） ═══
+// ═══ 自绘阴影卡片（偏移圆角矩形，天然无直角） ═══
 class ShadowCard : public QFrame {
 public:
     explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
-        setContentsMargins(16, 16, 16, 16);
+        setContentsMargins(10, 10, 10, 10);
         setAttribute(Qt::WA_TranslucentBackground);
     }
 protected:
@@ -51,30 +52,21 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
-        const int m = 16;
+        const int m = 10;
         QRect cardRect(m, m, width() - m*2, height() - m*2);
-        int cr = 14;
-
-        // 多层径向渐变阴影（外层淡 + 内层浓）
-        auto drawShadowLayer = [&](int dx, int dy, int radius, int alpha) {
-            QRadialGradient g(cardRect.center().x() + dx,
-                              cardRect.center().y() + dy,
-                              radius);
-            g.setColorAt(0.0, QColor(0, 0, 0, alpha));
-            g.setColorAt(0.5, QColor(0, 0, 0, alpha * 0.4));
-            g.setColorAt(1.0, QColor(0, 0, 0, 0));
-            p.setPen(Qt::NoPen);
-            p.setBrush(g);
-            p.drawRect(0, 0, width(), height());
-        };
-
-        // 外层大范围淡阴影
-        drawShadowLayer(4, 5, qMax(width(), height()) * 0.7, 22);
-        // 内层紧凑浓阴影
-        drawShadowLayer(3, 4, qMin(width(), height()) * 0.45, 55);
-
-        // 绘制卡片背景
+        const int cr = 14;
         auto cs = Theme::currentColors();
+
+        // 45° 偏移圆角矩形阴影（3 层，从外到内）
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(0, 0, 0, 8));
+        p.drawRoundedRect(cardRect.adjusted(-2, -1, 4, 5), cr+2, cr+2);
+        p.setBrush(QColor(0, 0, 0, 12));
+        p.drawRoundedRect(cardRect.adjusted(-1, 0, 3, 4), cr+1, cr+1);
+        p.setBrush(QColor(0, 0, 0, 16));
+        p.drawRoundedRect(cardRect.adjusted(0, 1, 2, 3), cr, cr);
+
+        // 卡片背景
         p.setBrush(cs.cardBg);
         p.setPen(QPen(cs.borderColor, 1));
         p.drawRoundedRect(cardRect, cr, cr);
@@ -233,6 +225,55 @@ public:
         painter->setBrush(Qt::white);
         painter->drawEllipse(QRectF(knobX, knobY, knobSize, knobSize));
         painter->restore();
+    }
+};
+// ═══ 活动列表卡片代理 ═══
+class ActivityItemDelegate final : public QStyledItemDelegate {
+public:
+    explicit ActivityItemDelegate(QObject *parent = nullptr)
+        : QStyledItemDelegate(parent) {}
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override {
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, true);
+
+        bool isPlaceholder = index.data(Qt::UserRole).toString() == "placeholder";
+        QRect r = option.rect.adjusted(4, 2, -4, -2);
+
+        // 卡片背景
+        QColor bg = isPlaceholder
+            ? QColor(255, 255, 255, 8)
+            : (option.state & QStyle::State_MouseOver
+                ? QColor(79, 140, 255, 18)
+                : QColor(255, 255, 255, 10));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(bg);
+        painter->drawRoundedRect(r, 10, 10);
+
+        // 左侧色条
+        if (!isPlaceholder) {
+            painter->setBrush(QColor(79, 140, 255, 60));
+            painter->drawRoundedRect(QRect(r.left(), r.top() + 4, 3, r.height() - 8), 1, 1);
+        }
+
+        // 文字
+        painter->setPen(isPlaceholder ? QColor(120, 130, 160) : QColor(207, 211, 232));
+        QFont f = option.font;
+        f.setPixelSize(12);
+        painter->setFont(f);
+        painter->drawText(r.adjusted(12, 6, -8, -6), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextWordWrap,
+                          index.data(Qt::DisplayRole).toString());
+
+        painter->restore();
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        QString text = index.data(Qt::DisplayRole).toString();
+        QFontMetrics fm(option.font);
+        int w = option.rect.width() - 24;  // margins
+        QRect bound = fm.boundingRect(QRect(0, 0, w, 1000), Qt::TextWordWrap, text);
+        return QSize(option.rect.width(), qMax(36, bound.height() + 16));
     }
 };
 
@@ -509,6 +550,7 @@ void MainWindow::setupPages()
     overviewRow->setSpacing(16);
 
     auto *statsPanel = new QWidget();
+    statsPanel->setMinimumWidth(400);
     auto *statsGrid = new QGridLayout(statsPanel);
     statsGrid->setContentsMargins(0, 0, 0, 0);
     statsGrid->setHorizontalSpacing(16);
@@ -521,7 +563,8 @@ void MainWindow::setupPages()
 
     auto *activityCard = createCard();
     activityCard->setProperty("dashboardCard", true);
-    activityCard->setMinimumWidth(320);
+    activityCard->setMinimumWidth(280);
+    activityCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto *activityInner = static_cast<QVBoxLayout*>(activityCard->layout());
     auto *activityTitle = new QLabel("最近事件");
     activityTitle->setObjectName("sectionTitle");
@@ -538,7 +581,9 @@ void MainWindow::setupPages()
     m_activityList->setUniformItemSizes(false);
     m_activityList->setWordWrap(true);
     m_activityList->setSpacing(4);
-    m_activityList->setMinimumHeight(220);
+    m_activityList->setMinimumHeight(160);
+    m_activityList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_activityList->setItemDelegate(new ActivityItemDelegate(m_activityList));
     auto *idleItem = new QListWidgetItem("等待系统事件...");
     idleItem->setData(Qt::UserRole, "placeholder");
     idleItem->setFlags(idleItem->flags() & ~Qt::ItemIsSelectable);
@@ -1448,8 +1493,11 @@ void MainWindow::showEvent(QShowEvent *event)
     if (firstShow) {
         firstShow = false;
         Theme::enableMica(winId());
-        m_envMgr->detectAll();
-        m_envMgr->checkLatestVersions();
+        // 延迟执行，让窗口先渲染出来
+        QTimer::singleShot(150, this, [this]() {
+            m_envMgr->detectAll();
+            m_envMgr->checkLatestVersions();
+        });
     }
 }
 

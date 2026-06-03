@@ -281,7 +281,7 @@ QString EnvironmentManager::runAndGetOutput(const QString &exe, const QStringLis
 {
     QProcess proc;
     proc.start(exe, args);
-    proc.waitForFinished(3000);
+    proc.waitForFinished(1500);
     return QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
 }
 
