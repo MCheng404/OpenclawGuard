@@ -193,7 +193,7 @@ private:
     // 工具方法
     QWidget* createNavButton(const QString &icon, const QString &text, int id);
     QFrame*  createSeparator();
-    QWidget* createPageHeader(const QString &title, const QString &desc);
+    QWidget* createPageHeader(const QString &title, const QString &desc, const QString &iconName = QString());
     QFrame*  createCard(QWidget *content = nullptr);
     QFrame*  createStatCard(const QString &iconPath, const QString &labelText,
                             QLabel *&valueLabel, const QString &initialValue,

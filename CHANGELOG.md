@@ -1,5 +1,19 @@
 # 更新日志
 
+## v1.1.0 (2026-06-03)
+
+### 优化
+- 侧边栏浮空化（16px 圆角 + 外包围容器 + 呼吸边距）
+- ComboBox 下拉框现代化（蓝色 hover、chevron 图标、10px 圆角列表、hover 高亮）
+- SpinBox 现代化（独立样式、自定义 22px 上下按钮、chevron 图标）
+- 页面标题全部加 32px 图标
+- 表格行 hover/selected 左侧 3px 蓝色指示条
+- 表头底部 2px 强调线 + letter-spacing 增强
+- Hero 卡片 45° 对角渐变背景
+- 状态胶囊新增 success/warning/danger 变体
+- 空状态样式增强（更大 padding、微蓝底色）
+- 新增 chevron-up/down SVG 图标
+
 ## v1.0.3 (2026-06-03)
 
 ### 修复

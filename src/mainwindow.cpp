@@ -370,18 +370,32 @@ QFrame* MainWindow::createSeparator()
     return sep;
 }
 
-QWidget* MainWindow::createPageHeader(const QString &title, const QString &desc)
+QWidget* MainWindow::createPageHeader(const QString &title, const QString &desc, const QString &iconName)
 {
     auto *w = new QWidget();
-    auto *lay = new QVBoxLayout(w);
+    auto *lay = new QHBoxLayout(w);
     lay->setContentsMargins(0, 0, 0, 16);
-    lay->setSpacing(4);
+    lay->setSpacing(14);
+
+    if (!iconName.isEmpty()) {
+        auto *icon = new QLabel();
+        icon->setPixmap(loadSvgIcon(iconName).pixmap(32, 32));
+        icon->setFixedSize(36, 36);
+        icon->setAlignment(Qt::AlignTop);
+        lay->addWidget(icon);
+    }
+
+    auto *textCol = new QWidget();
+    auto *textLay = new QVBoxLayout(textCol);
+    textLay->setContentsMargins(0, 0, 0, 0);
+    textLay->setSpacing(4);
     auto *titleLabel = new QLabel(title);
     titleLabel->setObjectName("pageTitle");
     auto *descLabel = new QLabel(desc);
     descLabel->setObjectName("pageDesc");
-    lay->addWidget(titleLabel);
-    lay->addWidget(descLabel);
+    textLay->addWidget(titleLabel);
+    textLay->addWidget(descLabel);
+    lay->addWidget(textCol, 1);
     return w;
 }
 
@@ -531,7 +545,13 @@ void MainWindow::setupSidebar(QHBoxLayout *mainLayout)
     contextLayout->addLayout(bottomRow);
 
     sideLayout->addWidget(m_sidebarContextCard);
-    mainLayout->addWidget(m_sidebar);
+
+    // 浮空侧边栏容器
+    auto *sidebarContainer = new QWidget();
+    auto *sidebarContainerLayout = new QVBoxLayout(sidebarContainer);
+    sidebarContainerLayout->setContentsMargins(8, 10, 4, 10);
+    sidebarContainerLayout->addWidget(m_sidebar);
+    mainLayout->addWidget(sidebarContainer);
 }
 
 void MainWindow::setupPages()
@@ -544,7 +564,7 @@ void MainWindow::setupPages()
     auto *dashLayout = new QVBoxLayout(dashPage);
     dashLayout->setContentsMargins(24, 24, 24, 24);
     dashLayout->setSpacing(16);
-    dashLayout->addWidget(createPageHeader("仪表盘", "系统概览、运行状态与最近事件"));
+    dashLayout->addWidget(createPageHeader("仪表盘", "系统概览、运行状态与最近事件", "shield-check"));
 
     auto *overviewRow = new QHBoxLayout();
     overviewRow->setSpacing(16);
@@ -642,7 +662,7 @@ void MainWindow::setupPages()
     auto *gwLayout = new QVBoxLayout(gwPage);
     gwLayout->setContentsMargins(24, 24, 24, 24);
     gwLayout->setSpacing(16);
-    gwLayout->addWidget(createPageHeader("网关管理", "配置网关路径、监听端口与运行控制"));
+    gwLayout->addWidget(createPageHeader("网关管理", "配置网关路径、监听端口与运行控制", "server"));
 
     auto *gwHeroCard = createCard();
     gwHeroCard->setProperty("pageTopCard", true);
@@ -708,7 +728,7 @@ void MainWindow::setupPages()
     auto *gdLayout = new QVBoxLayout(gdPage);
     gdLayout->setContentsMargins(24, 24, 24, 24);
     gdLayout->setSpacing(16);
-    gdLayout->addWidget(createPageHeader("进程", "监控关键进程，崩溃自动拉起"));
+    gdLayout->addWidget(createPageHeader("进程", "监控关键进程，崩溃自动拉起", "shield-check"));
 
     auto *gdTopCard = createCard();
     gdTopCard->setProperty("pageTopCard", true);
@@ -807,7 +827,7 @@ void MainWindow::setupPages()
     auto *upLayout = new QVBoxLayout(upScrollContent);
     upLayout->setContentsMargins(24, 24, 24, 24);
     upLayout->setSpacing(16);
-    upLayout->addWidget(createPageHeader("更新", "通过 npm 检查与安装 Openclaw 更新"));
+    upLayout->addWidget(createPageHeader("更新", "通过 npm 检查与安装 Openclaw 更新", "download-cloud"));
 
     // ------ 状态概览（横排 4 格迷你卡片） ------
     auto *statusGrid = new QHBoxLayout();
@@ -953,7 +973,7 @@ void MainWindow::setupPages()
     auto *envLayout = new QVBoxLayout(envPage);
     envLayout->setContentsMargins(24, 24, 24, 24);
     envLayout->setSpacing(16);
-    envLayout->addWidget(createPageHeader("环境", "检测与更新系统开发环境"));
+    envLayout->addWidget(createPageHeader("环境", "检测与更新系统开发环境", "cpu"));
 
     auto *envTopCard = createCard();
     envTopCard->setProperty("pageTopCard", true);
@@ -1031,7 +1051,7 @@ void MainWindow::setupPages()
     auto *stLayout = new QVBoxLayout(stInner);
     stLayout->setContentsMargins(24, 24, 24, 24);
     stLayout->setSpacing(16);
-    stLayout->addWidget(createPageHeader("设置", "应用偏好与行为配置"));
+    stLayout->addWidget(createPageHeader("设置", "应用偏好与行为配置", "settings"));
 
     // 基础偏好
     auto *baseCard = createCard();
