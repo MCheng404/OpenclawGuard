@@ -31,6 +31,7 @@
 #include <QStatusBar>
 #include <QScrollArea>
 #include <QDesktopServices>
+#include <QShortcut>
 #include <QGridLayout>
 #include <QSvgRenderer>
 #include <QPainter>
@@ -241,24 +242,32 @@ public:
         bool isPlaceholder = index.data(Qt::UserRole).toString() == "placeholder";
         QRect r = option.rect.adjusted(4, 2, -4, -2);
 
+        auto cs = Theme::currentColors();
+        const bool dark = cs.mainBg.value() < 128;
+
         // 卡片背景
-        QColor bg = isPlaceholder
-            ? QColor(255, 255, 255, 8)
-            : (option.state & QStyle::State_MouseOver
-                ? QColor(79, 140, 255, 18)
-                : QColor(255, 255, 255, 10));
+        QColor bg;
+        if (isPlaceholder) {
+            bg = dark ? QColor(255, 255, 255, 6) : QColor(0, 0, 0, 6);
+        } else if (option.state & QStyle::State_MouseOver) {
+            bg = dark ? QColor(79, 140, 255, 18) : QColor(59, 130, 246, 14);
+        } else {
+            bg = dark ? QColor(255, 255, 255, 8) : QColor(0, 0, 0, 5);
+        }
         painter->setPen(Qt::NoPen);
         painter->setBrush(bg);
         painter->drawRoundedRect(r, 10, 10);
 
         // 左侧色条
         if (!isPlaceholder) {
-            painter->setBrush(QColor(79, 140, 255, 60));
+            painter->setBrush(dark ? QColor(79, 140, 255, 60) : QColor(59, 130, 246, 50));
             painter->drawRoundedRect(QRect(r.left(), r.top() + 4, 3, r.height() - 8), 1, 1);
         }
 
         // 文字
-        painter->setPen(isPlaceholder ? QColor(120, 130, 160) : QColor(207, 211, 232));
+        painter->setPen(isPlaceholder
+            ? (dark ? QColor(100, 110, 140) : QColor(148, 163, 184))
+            : cs.textPrimary);
         QFont f = option.font;
         f.setPixelSize(12);
         painter->setFont(f);
@@ -1338,6 +1347,17 @@ void MainWindow::setupConnections()
     });
     connect(m_memSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [](int v) {
         AppSettings.setSmartGuardMemThreshold(v);
+    });
+
+    //   键盘快捷键
+    auto *quitShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
+    connect(quitShortcut, &QShortcut::activated, qApp, &QApplication::quit);
+    auto *hideShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    connect(hideShortcut, &QShortcut::activated, this, [this]() { showMinimized(); });
+    auto *refreshShortcut = new QShortcut(QKeySequence(Qt::Key_F5), this);
+    connect(refreshShortcut, &QShortcut::activated, this, [this]() {
+        m_envMgr->detectAll();
+        updateStatusBar("环境检测已刷新");
     });
 
     // 导航
