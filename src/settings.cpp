@@ -149,3 +149,23 @@ void Settings::setSmartGuardMemThreshold(int pct)
 {
     s.setValue("guard/memThreshold", pct);
 }
+
+QByteArray Settings::windowGeometry() const
+{
+    return s.value("ui/geometry").toByteArray();
+}
+
+void Settings::setWindowGeometry(const QByteArray &g)
+{
+    s.setValue("ui/geometry", g);
+}
+
+bool Settings::closeHintShown() const
+{
+    return s.value("ui/closeHintShown", false).toBool();
+}
+
+void Settings::setCloseHintShown(bool v)
+{
+    s.setValue("ui/closeHintShown", v);
+}

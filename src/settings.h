@@ -61,6 +61,12 @@ public:
     int  smartGuardMemThreshold() const;
     void setSmartGuardMemThreshold(int pct);
 
+    // 窗口状态
+    QByteArray windowGeometry() const;
+    void setWindowGeometry(const QByteArray &g);
+    bool closeHintShown() const;
+    void setCloseHintShown(bool v);
+
 private:
     Settings();
     QSettings s;

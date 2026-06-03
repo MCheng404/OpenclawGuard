@@ -28,8 +28,6 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg)
 
 set(SOURCES
     src/main.cpp
-    src/backend.h
-    src/backend.cpp
     src/config.h
     src/settings.h
     src/settings.cpp

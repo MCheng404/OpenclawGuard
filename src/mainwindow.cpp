@@ -1147,6 +1147,29 @@ void MainWindow::setupPages()
     smartInner->addLayout(thresholdRow);
     stLayout->addWidget(smartCard);
 
+    // 恢复默认
+    auto *resetRow = new QHBoxLayout();
+    resetRow->setSpacing(8);
+    auto *resetBtn = new QPushButton("恢复默认设置");
+    resetBtn->setObjectName("secondaryBtn");
+    resetBtn->setIcon(loadSvgIcon("rotate-cw"));
+    resetBtn->setCursor(Qt::PointingHandCursor);
+    connect(resetBtn, &QPushButton::clicked, this, [this]() {
+        auto r = QMessageBox::question(this, "恢复默认",
+            "确定将智能拉起阈值和主题恢复为默认值？\n\n"
+            "CPU: 80%  |  内存: 85%  |  主题: 跟随系统",
+            QMessageBox::Yes | QMessageBox::No);
+        if (r == QMessageBox::Yes) {
+            m_cpuSpin->setValue(80);
+            m_memSpin->setValue(85);
+            m_themeCombo->setCurrentIndex(0);
+            updateStatusBar("已恢复默认设置");
+        }
+    });
+    resetRow->addStretch();
+    resetRow->addWidget(resetBtn);
+    stLayout->addLayout(resetRow);
+
     // 更新与网络
     auto *tokenCard = createCard();
     auto *tokenInner = static_cast<QVBoxLayout*>(tokenCard->layout());
@@ -1308,6 +1331,14 @@ void MainWindow::setupConnections()
     connect(m_tray, &TrayManager::quitRequested, qApp, &QApplication::quit);
     connect(m_tray, &TrayManager::restartGatewayRequested,
             this, &MainWindow::onRestartGateway);
+
+    //   SpinBox 阈值自动保存
+    connect(m_cpuSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [](int v) {
+        AppSettings.setSmartGuardCpuThreshold(v);
+    });
+    connect(m_memSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [](int v) {
+        AppSettings.setSmartGuardMemThreshold(v);
+    });
 
     // 导航
     connect(m_navGroup, &QButtonGroup::idClicked, this, &MainWindow::onNavigate);
@@ -1888,6 +1919,17 @@ void MainWindow::onThemeChanged(int idx)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
 #ifdef Q_OS_WIN
+    // 保存窗口位置
+    AppSettings.setWindowGeometry(saveGeometry());
+
+    // 首次关闭提示
+    if (!AppSettings.closeHintShown()) {
+        AppSettings.setCloseHintShown(true);
+        QMessageBox::information(this, "最小化到托盘",
+            "程序将最小化到系统托盘继续运行。\n\n"
+            "如需完全退出，请右键托盘图标选择「退出」。");
+    }
+
     hide();
     event->ignore();
 #else
@@ -1921,6 +1963,11 @@ void MainWindow::loadSettings()
 
     m_guard->setCpuThreshold(AppSettings.smartGuardCpuThreshold());
     m_guard->setMemThreshold(AppSettings.smartGuardMemThreshold());
+
+    // 恢复窗口位置和大小
+    QByteArray geo = AppSettings.windowGeometry();
+    if (!geo.isEmpty())
+        restoreGeometry(geo);
 
     auto list = AppSettings.guardList();
     m_guard->setGuardItems(list);
