@@ -13,13 +13,14 @@
 
 ## 版本
 
-当前版本: **v1.0.2** | [更新日志](CHANGELOG.md)
+当前版本: **v1.0.3** | [更新日志](CHANGELOG.md)
 
 ## 功能特性
 
 ### 仪表盘
-- 网关状态实时监控（在线/离线 + 端口）
+- 网关状态实时监控（在线/离线 + 端口 + 脉冲动画）
 - 环境概览（Node.js / Python / Git / .NET / PowerShell / CMake / Java）
+- 最近事件列表（卡片式渲染，自适应高度）
 - 快捷操作：一键启动/重启网关、环境检测
 
 ### 网关管理
@@ -28,21 +29,36 @@
 - 崩溃自动拉起 + CPU/内存智能阈值守护
 
 ### 更新管理
-- 通过 `npm install -g openclaw@latest` 执行更新
+- 通过 `npm install -g openclaw@latest` 执行更新（`--yes` 自动批准脚本）
 - 支持 stable / beta 通道切换
 - GitHub Releases 列表浏览与下载
-- 当前版本、通道、安装方式状态展示
+- 状态概览横排 4 格迷你卡片（版本/通道/安装方式/可用更新）
 
 ### 环境检测
 - 自动扫描 8 种开发工具链
 - 对比当前版本与最新版本
-- 一键更新（winget / npm）
+- 异步更新（winget / npm），不阻塞 UI
+- 实时输出进度到状态栏
 
-### 其他
+### 系统托盘
+- 后台常驻，双击显示主窗口
+- 托盘菜单实时显示网关状态（在线/离线 + 端口）
+- 一键重启网关
+
+### 界面
 - Windows 11 Mica / Acrylic 毛玻璃特效
 - 深色 / 浅色 / 跟随系统主题
-- DPI 缩放自适应
-- 系统托盘常驻 + 开机自启
+- 自绘阴影卡片（偏移圆角矩形，45° 方向）
+- 侧边栏渐变过渡融合 Mica 背景
+- 导航按钮左侧竖线指示器
+- DPI 缩放自适应（PassThrough 策略）
+- GPU 加速渲染（OpenGL + 2x MSAA）
+
+### 设置
+- GitHub Token 管理（显示/隐藏切换）
+- 智能拉起阈值配置（CPU / 内存）
+- 开机自启管理
+- GitHub 项目链接
 
 ## 技术栈
 
@@ -54,6 +70,7 @@
 | 编译器 | Clang 17 (LLVM MinGW) |
 | DWM 特效 | Windows DWM API (Mica / Acrylic) |
 | GPU 渲染 | OpenGL (QSurfaceFormat) |
+| 阴影 | 自绘 ShadowCard（QPainter 裁剪路径） |
 
 ## 构建
 
@@ -91,7 +108,7 @@ windeployqt6.exe --no-translations OpenclawGuard.exe
 OpenclawGuard/
 ├── src/
 │   ├── main.cpp              # 入口 + OpenGL 初始化 + DPI 设置
-│   ├── mainwindow.cpp/h      # 主窗口（6 页面布局）
+│   ├── mainwindow.cpp/h      # 主窗口（仪表盘/网关/进程/更新/环境/设置）
 │   ├── gatewaymanager.cpp/h  # 网关管理（openclaw gateway 命令）
 │   ├── processguard.cpp/h    # 进程守护（自动拉起 + 阈值检测）
 │   ├── updatemanager.cpp/h   # 更新管理（npm + GitHub API）
@@ -99,13 +116,15 @@ OpenclawGuard/
 │   ├── portmonitor.cpp/h     # TCP 端口监控
 │   ├── theme.cpp/h           # 主题系统 + DWM 特效
 │   ├── mica_helper.cpp       # Windows Mica/Acrylic 实现
-│   ├── traymanager.cpp/h     # 系统托盘
-│   ├── settings.cpp/h        # 配置持久化
+│   ├── traymanager.cpp/h     # 系统托盘（实时网关状态）
+│   ├── settings.cpp/h        # 配置持久化（QSettings）
 │   ├── config.h              # 常量定义
 │   ├── toggle_switch.cpp/h   # 自定义开关控件
 │   └── backend.cpp/h         # 后端工具类
-├── resources/                # SVG 图标 + 资源文件
+├── resources/
+│   └── icons/                # SVG 图标
 ├── CMakeLists.txt
+├── CHANGELOG.md
 ├── .gitignore
 ├── LICENSE
 └── README.md
