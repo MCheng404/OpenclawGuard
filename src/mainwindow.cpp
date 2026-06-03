@@ -39,12 +39,11 @@
 #include <QMouseEvent>
 #include <functional>
 
-// ═══ 自绘阴影卡片（不受 widget 边界裁剪限制） ═══
+// ═══ 自绘阴影卡片（径向渐变模拟高斯模糊） ═══
 class ShadowCard : public QFrame {
 public:
     explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
-        // 给阴影留出绘制空间
-        setContentsMargins(10, 10, 10, 10);
+        setContentsMargins(14, 14, 14, 14);
         setAttribute(Qt::WA_TranslucentBackground);
     }
 protected:
@@ -52,28 +51,31 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
-        // 绘制多层阴影（从外到内，模拟高斯模糊）
-        const int layers = 6;
-        const int spread = 10;
-        const int offsetX = 4, offsetY = 5;  // 45° 偏移
-        QRect cardRect(spread, spread, width() - spread*2, height() - spread*2);
+        const int m = 14;  // 阴影边距
+        QRect cardRect(m, m, width() - m*2, height() - m*2);
+        int cr = 14;  // 卡片圆角半径
 
-        for (int i = layers; i >= 0; --i) {
-            int alpha = 8 + (layers - i) * 4;  // 外层淡，内层浓
-            QColor shadowColor(0, 0, 0, alpha);
+        // ── 用径向渐变绘制四个角 + 四条边的柔和阴影 ──
+        auto drawShadow = [&](int dx, int dy, int radius, int alpha) {
+            QRadialGradient g(cardRect.center().x() + dx,
+                              cardRect.center().y() + dy,
+                              radius);
+            g.setColorAt(0.0, QColor(0, 0, 0, alpha));
+            g.setColorAt(0.6, QColor(0, 0, 0, alpha / 3));
+            g.setColorAt(1.0, QColor(0, 0, 0, 0));
             p.setPen(Qt::NoPen);
-            p.setBrush(shadowColor);
-            p.drawRoundedRect(cardRect.adjusted(
-                offsetX - i*2, offsetY - i*2,
-                offsetX + i*2, offsetY + i*2
-            ), 16, 16);
-        }
+            p.setBrush(g);
+            p.drawRect(0, 0, width(), height());
+        };
 
-        // 绘制卡片背景
+        // 45° 方向偏移阴影（右下）
+        drawShadow(3, 3, qMin(width(), height()) * 0.6, 35);
+
+        // ── 绘制卡片背景 ──
         auto cs = Theme::currentColors();
         p.setBrush(cs.cardBg);
         p.setPen(QPen(cs.borderColor, 1));
-        p.drawRoundedRect(cardRect, 14, 14);
+        p.drawRoundedRect(cardRect, cr, cr);
 
         p.end();
     }
