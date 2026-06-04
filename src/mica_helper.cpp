@@ -8,6 +8,9 @@
 #ifndef DWMWA_SYSTEMBACKDROP_TYPE
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
+#ifndef DWMWA_TRANSITIONS_FORCEDISABLED
+#define DWMWA_TRANSITIONS_FORCEDISABLED 3
+#endif
 #ifndef DWMSBT_MAINWINDOW
 #define DWMSBT_MAINWINDOW 2
 #endif
@@ -18,6 +21,11 @@
 void Theme::enableMica(WId winId)
 {
     HWND hwnd = reinterpret_cast<HWND>(winId);
+
+    // Step 0: 禁用 DWM 过渡动画（避免 Mica 淡入白闪）
+    BOOL disableTransitions = TRUE;
+    DwmSetWindowAttribute(hwnd, DWMWA_TRANSITIONS_FORCEDISABLED,
+                          &disableTransitions, sizeof(disableTransitions));
 
     // Step 1: Extend DWM frame into entire client area so backdrop shows through
     MARGINS margins = {-1, -1, -1, -1};
