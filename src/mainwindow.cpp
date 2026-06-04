@@ -2118,25 +2118,26 @@ void MainWindow::applyTheme()
 
     const QString effectiveTheme = (idx == 0) ? Theme::detectSystemTheme() : themes[idx];
 
-    //   切换到深色时，先涂黑窗口底色，避免 disableMica 后露出白色
-    if (effectiveTheme == "dark") {
-        QPalette darkPal;
-        darkPal.setColor(QPalette::Window, QColor(13, 15, 26));
-        darkPal.setColor(QPalette::Base,    QColor(13, 15, 26));
-        qApp->setPalette(darkPal);
-        centralWidget()->setStyleSheet("background: #0d0f1a;");
-        repaint();
-    }
-
-    //   切换主题时临时关闭绘制，避免半透明窗口和 DWM 背景冲突
+    //   先用不透明底色涂满窗口，这样 disableMica 后不会露出白色 DWM 背景
+    //   关键：QPalette::Window 必须是不透明色（不能是 transparent）
     setUpdatesEnabled(false);
 
-    //   先清除 DWM Acrylic 背景
+    QPalette solidPal;
+    const QColor bgColor = (effectiveTheme == "dark") ? QColor(13, 15, 26) : QColor(245, 247, 252);
+    solidPal.setColor(QPalette::Window, bgColor);
+    solidPal.setColor(QPalette::Base,    bgColor);
+    solidPal.setColor(QPalette::Button,  bgColor);
+    qApp->setPalette(solidPal);
+
+    // 给 centralWidget 也设背景色，双保险
+    centralWidget()->setStyleSheet(QString("background: %1;").arg(bgColor.name()));
+    setUpdatesEnabled(true);
+    repaint();  // 立即绘制不透明底色
+
+    //   现在可以安全地切换 Mica 了
+    setUpdatesEnabled(false);
     Theme::disableMica(winId());
-
-    Theme::applyTheme(themes[idx]);
-
-    //   重新应用 Mica/Acrylic
+    Theme::applyTheme(themes[idx]);  // 这里会把 QPalette::Window 设回 transparent
     Theme::enableMica(winId());
 
     //   清除临时底色
