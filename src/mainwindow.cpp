@@ -2116,6 +2116,18 @@ void MainWindow::applyTheme()
     int idx = m_themeCombo->currentIndex();
     QString themes[] = {"system", "light", "dark"};
 
+    const QString effectiveTheme = (idx == 0) ? Theme::detectSystemTheme() : themes[idx];
+
+    //   切换到深色时，先涂黑窗口底色，避免 disableMica 后露出白色
+    if (effectiveTheme == "dark") {
+        QPalette darkPal;
+        darkPal.setColor(QPalette::Window, QColor(13, 15, 26));
+        darkPal.setColor(QPalette::Base,    QColor(13, 15, 26));
+        qApp->setPalette(darkPal);
+        centralWidget()->setStyleSheet("background: #0d0f1a;");
+        repaint();
+    }
+
     //   切换主题时临时关闭绘制，避免半透明窗口和 DWM 背景冲突
     setUpdatesEnabled(false);
 
@@ -2127,6 +2139,10 @@ void MainWindow::applyTheme()
     //   重新应用 Mica/Acrylic
     Theme::enableMica(winId());
 
+    //   清除临时底色
+    if (centralWidget())
+        centralWidget()->setStyleSheet("");
+
     auto cs = Theme::currentColors();
     if (m_guardTable)
         m_guardTable->viewport()->update();
@@ -2135,7 +2151,6 @@ void MainWindow::applyTheme()
     const bool gatewayOnline = m_gatewayStatusLabel && m_gatewayStatusLabel->text().contains("在线");
     setStatusBadgeStyle(m_gatewayStatusLabel, gatewayOnline ? QColor("#34d399") : QColor("#ef4444"));
 
-    const QString effectiveTheme = (idx == 0) ? Theme::detectSystemTheme() : themes[idx];
     if (m_themeBtn)
         m_themeBtn->setIcon(loadSvgIcon(effectiveTheme == "dark" ? "moon" : "sun"));
     if (m_sidebarThemeLabel) {
