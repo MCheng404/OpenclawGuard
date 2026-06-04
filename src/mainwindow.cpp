@@ -1966,16 +1966,17 @@ void MainWindow::onEnvUpdateFinished(const QString &name, bool success, const QS
 void MainWindow::onThemeChanged(int idx)
 {
     QString themes[] = {"system", "light", "dark"};
-    QString theme = themes[idx];
-    AppSettings.setTheme(theme);
+    AppSettings.setTheme(themes[idx]);
 
-    if (idx == 1)       m_themeBtn->setIcon(loadSvgIcon("sun"));
-    else if (idx == 2)  m_themeBtn->setIcon(loadSvgIcon("moon"));
-    else {
-        QString sys = Theme::detectSystemTheme();
-        m_themeBtn->setIcon(sys == "dark" ? loadSvgIcon("moon") : loadSvgIcon("sun"));
-    }
-    applyTheme();
+    // 简单粗暴：保存主题后重启程序，避免 DWM Mica 过渡动画白闪
+    QMessageBox::information(this, "切换主题",
+        "主题已保存，程序将重新启动以应用新主题。");
+
+    // 启动新实例
+    QProcess::startDetached(QCoreApplication::applicationFilePath(),
+                            QCoreApplication::arguments());
+    // 退出当前实例
+    qApp->quit();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -2116,34 +2117,13 @@ void MainWindow::applyTheme()
     int idx = m_themeCombo->currentIndex();
     QString themes[] = {"system", "light", "dark"};
 
-    const QString effectiveTheme = (idx == 0) ? Theme::detectSystemTheme() : themes[idx];
-
-    //   先用不透明底色涂满窗口，这样 disableMica 后不会露出白色 DWM 背景
-    //   关键：QPalette::Window 必须是不透明色（不能是 transparent）
+    //   切换主题时临时关闭绘制
     setUpdatesEnabled(false);
 
-    QPalette solidPal;
-    const QColor bgColor = (effectiveTheme == "dark") ? QColor(13, 15, 26) : QColor(245, 247, 252);
-    solidPal.setColor(QPalette::Window, bgColor);
-    solidPal.setColor(QPalette::Base,    bgColor);
-    solidPal.setColor(QPalette::Button,  bgColor);
-    qApp->setPalette(solidPal);
-
-    // 给 centralWidget 也设背景色，双保险
-    centralWidget()->setStyleSheet(QString("background: %1;").arg(bgColor.name()));
-    setUpdatesEnabled(true);
-    repaint();  // 立即绘制不透明底色
-
-    //   现在可以安全地切换 Mica 了
-    setUpdatesEnabled(false);
-    Theme::disableMica(winId());
-    Theme::applyTheme(themes[idx]);  // 这里会把 QPalette::Window 设回 transparent
+    Theme::applyTheme(themes[idx]);
     Theme::enableMica(winId());
 
-    //   清除临时底色
-    if (centralWidget())
-        centralWidget()->setStyleSheet("");
-
+    const QString effectiveTheme = (idx == 0) ? Theme::detectSystemTheme() : themes[idx];
     auto cs = Theme::currentColors();
     if (m_guardTable)
         m_guardTable->viewport()->update();
