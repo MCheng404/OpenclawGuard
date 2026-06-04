@@ -1,8 +1,4 @@
 <RCC>
-    <qresource prefix="/">
-        <file alias="qml/main.qml">../qml/main.qml</file>
-        <file alias="qml/MainWindow.qml">../qml/MainWindow.qml</file>
-    </qresource>
     <qresource prefix="/icons">
         <file>icons/layout-dashboard.svg</file>
         <file>icons/server.svg</file>
