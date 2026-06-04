@@ -21,7 +21,11 @@
 #include <QJsonObject>
 #include <QTextEdit>
 #include <QGraphicsOpacityEffect>
+#include <QGraphicsDropShadowEffect>
 #include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
+#include <QSequentialAnimationGroup>
+#include <QTimer>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QListWidget>
@@ -41,12 +45,18 @@
 #include <QMouseEvent>
 #include <functional>
 
-// ═══ 自绘阴影卡片（偏移圆角矩形，天然无直角） ═══
+// ═══ 自绘阴影卡片（高斯模糊阴影 + 亚克力质感） ═══
 class ShadowCard : public QFrame {
 public:
     explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
         setContentsMargins(10, 10, 10, 10);
         setAttribute(Qt::WA_TranslucentBackground);
+        // 高斯模糊阴影
+        auto *shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(28);
+        shadow->setOffset(0, 6);
+        shadow->setColor(QColor(0, 0, 0, 50));
+        setGraphicsEffect(shadow);
     }
 protected:
     void paintEvent(QPaintEvent *) override {
@@ -58,19 +68,19 @@ protected:
         const int cr = 14;
         auto cs = Theme::currentColors();
 
-        // 45° 偏移圆角矩形阴影（3 层，从外到内）
-        p.setPen(Qt::NoPen);
-        p.setBrush(QColor(0, 0, 0, 8));
-        p.drawRoundedRect(cardRect.adjusted(-2, -1, 4, 5), cr+2, cr+2);
-        p.setBrush(QColor(0, 0, 0, 12));
-        p.drawRoundedRect(cardRect.adjusted(-1, 0, 3, 4), cr+1, cr+1);
-        p.setBrush(QColor(0, 0, 0, 16));
-        p.drawRoundedRect(cardRect.adjusted(0, 1, 2, 3), cr, cr);
-
         // 卡片背景
         p.setBrush(cs.cardBg);
         p.setPen(QPen(cs.borderColor, 1));
         p.drawRoundedRect(cardRect, cr, cr);
+
+        // 顶部高光线（亚克力质感）
+        QLinearGradient topHighlight(cardRect.topLeft(), cardRect.topRight());
+        topHighlight.setColorAt(0, QColor(255, 255, 255, 0));
+        topHighlight.setColorAt(0.5, QColor(255, 255, 255, cs.mainBg.value() < 128 ? 12 : 20));
+        topHighlight.setColorAt(1, QColor(255, 255, 255, 0));
+        p.setPen(QPen(QBrush(topHighlight), 1));
+        p.setBrush(Qt::NoBrush);
+        p.drawRoundedRect(QRectF(cardRect).adjusted(0.5, 0.5, -0.5, -0.5), cr, cr);
 
         p.end();
     }
@@ -425,9 +435,20 @@ QFrame* MainWindow::createStatCard(const QString &iconName, const QString &label
 {
     auto *card = new ShadowCard();
     card->setObjectName("statCard");
-    card->setMinimumHeight(130);
-    auto *lay = new QVBoxLayout(card);
-    lay->setContentsMargins(24, 24, 24, 24);
+    card->setProperty("dashboardCard", true);
+    card->setMinimumHeight(136);
+    auto *outerLay = new QVBoxLayout(card);
+    outerLay->setContentsMargins(0, 0, 0, 0);
+    outerLay->setSpacing(0);
+
+    // 顶部渐变装饰条
+    auto *accentBar = new QWidget();
+    accentBar->setFixedHeight(3);
+    accentBar->setObjectName("statAccentBar");
+    outerLay->addWidget(accentBar);
+
+    auto *lay = new QVBoxLayout();
+    lay->setContentsMargins(24, 20, 24, 24);
     lay->setSpacing(8);
 
     auto *topRow = new QHBoxLayout();
@@ -455,6 +476,7 @@ QFrame* MainWindow::createStatCard(const QString &iconName, const QString &label
     label->setObjectName("statLabel");
     lay->addWidget(label);
 
+    outerLay->addLayout(lay, 1);
     return card;
 }
 
@@ -484,6 +506,15 @@ void MainWindow::setupSidebar(QHBoxLayout *mainLayout)
 
     m_navGroup = new QButtonGroup(this);
     m_navGroup->setExclusive(true);
+
+    // 侧边栏滑动指示器
+    m_navIndicator = new QFrame(m_sidebar);
+    m_navIndicator->setObjectName("navIndicator");
+    m_navIndicator->setFixedWidth(3);
+    m_navIndicator->setStyleSheet(
+        "QFrame#navIndicator { background: #4f8cff; border-radius: 1px; }"
+    );
+    m_navIndicator->raise();
 
     auto *overviewLabel = new QLabel("总览");
     overviewLabel->setObjectName("navSectionLabel");
@@ -712,6 +743,7 @@ void MainWindow::setupPages()
 
     // 端口监控卡片
     auto *cfgCard = createCard();
+    cfgCard->setProperty("dashboardCard", true);
     auto *cfgInner = static_cast<QVBoxLayout*>(cfgCard->layout());
     auto *cfgTitle = new QLabel("端口监控");
     cfgTitle->setObjectName("sectionTitle");
@@ -767,6 +799,7 @@ void MainWindow::setupPages()
     gdLayout->addWidget(gdTopCard);
 
     auto *gdTableCard = createCard();
+    gdTableCard->setProperty("dashboardCard", true);
     auto *gdTblInner = static_cast<QVBoxLayout*>(gdTableCard->layout());
 
     auto *gdInfoWrap = new QWidget();
@@ -880,6 +913,7 @@ void MainWindow::setupPages()
 
     // ------ 操作区（紧凑：标题 + 按钮同一行） ------
     auto *cliCard = createCard();
+    cliCard->setProperty("dashboardCard", true);
     auto *cliInner = static_cast<QVBoxLayout*>(cliCard->layout());
     cliInner->setSpacing(10);
 
@@ -928,6 +962,7 @@ void MainWindow::setupPages()
 
     // ------ Releases 列表 ------
     auto *upTableCard = createCard();
+    upTableCard->setProperty("dashboardCard", true);
     auto *upTblInner = static_cast<QVBoxLayout*>(upTableCard->layout());
     upTblInner->setSpacing(8);
 
@@ -1012,6 +1047,7 @@ void MainWindow::setupPages()
     envLayout->addWidget(envTopCard);
 
     auto *envTableCard = createCard();
+    envTableCard->setProperty("dashboardCard", true);
     auto *envTblInner = static_cast<QVBoxLayout*>(envTableCard->layout());
     m_envEmptyState = new QLabel("尚未检测到环境信息\n点击“检测环境”开始扫描");
     m_envEmptyState->setObjectName("emptyState");
@@ -1109,6 +1145,7 @@ void MainWindow::setupPages()
 
     // 智能拉起
     auto *smartCard = createCard();
+    smartCard->setProperty("dashboardCard", true);
     auto *smartInner = static_cast<QVBoxLayout*>(smartCard->layout());
     smartInner->setSpacing(12);
     auto *smartHeader = new QHBoxLayout();
@@ -1181,6 +1218,7 @@ void MainWindow::setupPages()
 
     // 更新与网络
     auto *tokenCard = createCard();
+    tokenCard->setProperty("dashboardCard", true);
     auto *tokenInner = static_cast<QVBoxLayout*>(tokenCard->layout());
     tokenInner->setSpacing(12);
     auto *tokenHeader = new QHBoxLayout();
@@ -1585,6 +1623,10 @@ void MainWindow::onNavigate(int pageIndex)
 {
     m_pages->setCurrentIndex(pageIndex);
     updateSidebarContext(pageIndex);
+
+    // 卡片交错入场（去掉整页淡入，避免与阴影 effect 冲突）
+    QWidget *newPage = m_pages->currentWidget();
+    if (newPage) animatePageCards(newPage);
 }
 
 void MainWindow::onToggleTheme()
@@ -1963,6 +2005,64 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     updateResponsiveLayout();
 }
 
+// ====================== 页面卡片交错入场动画 ======================
+void MainWindow::animatePageCards(QWidget *page)
+{
+    if (!page) return;
+
+    // 收集页面内所有卡片
+    QList<QFrame*> cards;
+    std::function<void(QWidget*)> findCards = [&](QWidget *w) {
+        for (auto *child : w->children()) {
+            if (auto *frame = qobject_cast<QFrame*>(child)) {
+                if (frame->property("dashboardCard").toBool() || frame->property("pageTopCard").toBool()) {
+                    cards.append(frame);
+                }
+            }
+            if (auto *widget = qobject_cast<QWidget*>(child)) {
+                findCards(widget);
+            }
+        }
+    };
+    findCards(page);
+
+    if (cards.isEmpty()) return;
+
+    // ── 缓动曲线：OutQuart 比 OutCubic 更有「着陆感」 ──
+    const QEasingCurve easing(QEasingCurve::OutQuart);
+
+    // ── 动画参数 ──
+    const int duration   = 400;   // 单卡片动画时长 ms
+    const int baseDelay  = 100;   // 第一张卡片延迟
+    const int stagger    = 70;    // 相邻卡片间隔（递减）
+    const int minStagger = 30;    // 最小间隔
+    const int yShift     = 22;    // 初始下移量 px
+
+    for (int i = 0; i < cards.size(); ++i) {
+        QFrame *card = cards[i];
+
+        // 递减延迟：前面的卡片间隔大，后面的越来越快
+        // delay = max(minStagger, stagger - i * 6)
+        int curStagger = qMax(minStagger, stagger - i * 6);
+        int delay = baseDelay;
+        for (int j = 0; j < i; ++j)
+            delay += qMax(minStagger, stagger - j * 6);
+
+        // 位移动画
+        auto *anim = new QPropertyAnimation(card, "pos");
+        anim->setDuration(duration);
+        QPoint endPos = card->pos();
+        anim->setStartValue(QPoint(endPos.x(), endPos.y() + yShift));
+        anim->setEndValue(endPos);
+        anim->setEasingCurve(easing);
+
+        // 延迟启动
+        QTimer::singleShot(delay, card, [anim]() {
+            anim->start(QAbstractAnimation::DeleteWhenStopped);
+        });
+    }
+}
+
 // ====================== Helpers ======================
 
 void MainWindow::loadSettings()
@@ -2072,6 +2172,42 @@ void MainWindow::updateSidebarContext(int pageIndex)
     const int safeIndex = qBound(0, pageIndex, maxIndex);
     m_sidebarPageLabel->setText(QString::fromUtf8(pages[safeIndex].title));
     m_sidebarPageHint->setText(QString::fromUtf8(pages[safeIndex].hint));
+
+    // ── 滑动指示器动画 ──
+    if (m_navIndicator && m_sidebar) {
+        // 找到当前选中的按钮
+        QAbstractButton *checkedBtn = m_navGroup->checkedButton();
+        if (checkedBtn) {
+            // 将按钮左上角映射到侧边栏坐标
+            QPoint btnPos = m_sidebar->mapFromGlobal(checkedBtn->mapToGlobal(QPoint(0, 0)));
+            int targetY = btnPos.y() + 6;   // 按钮内偏移
+            int targetH = checkedBtn->height() - 12;
+
+            // 首次定位（无动画）
+            if (m_navIndicator->y() == 0 && m_navIndicator->height() <= 1) {
+                m_navIndicator->setGeometry(8, targetY, 3, targetH);
+            } else {
+                // Y 坐标动画
+                auto *animY = new QPropertyAnimation(m_navIndicator, "pos");
+                animY->setDuration(320);
+                animY->setStartValue(m_navIndicator->pos());
+                animY->setEndValue(QPoint(8, targetY));
+                animY->setEasingCurve(QEasingCurve::OutQuart);
+
+                // 高度动画
+                auto *animH = new QPropertyAnimation(m_navIndicator, "size");
+                animH->setDuration(320);
+                animH->setStartValue(m_navIndicator->size());
+                animH->setEndValue(QSize(3, targetH));
+                animH->setEasingCurve(QEasingCurve::OutQuart);
+
+                auto *group = new QParallelAnimationGroup(m_navIndicator);
+                group->addAnimation(animY);
+                group->addAnimation(animH);
+                group->start(QAbstractAnimation::DeleteWhenStopped);
+            }
+        }
+    }
 }
 
 void MainWindow::updateResponsiveLayout()

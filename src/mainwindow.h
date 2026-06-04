@@ -88,6 +88,7 @@ private:
     void refreshUpdateTable();
     void applyTheme();
     void updateSidebarContext(int pageIndex);
+    void animatePageCards(QWidget *page);
     void updateResponsiveLayout();
     void updateStatusBar(const QString &msg);
     void appendLog(const QString &msg);
@@ -96,6 +97,7 @@ private:
     // 侧边栏
     QWidget     *m_sidebar = nullptr;
     QButtonGroup *m_navGroup = nullptr;
+    QFrame      *m_navIndicator = nullptr;
     QLabel      *m_versionLabel = nullptr;
     QPushButton *m_themeBtn = nullptr;
     QLabel      *m_logoLabel = nullptr;

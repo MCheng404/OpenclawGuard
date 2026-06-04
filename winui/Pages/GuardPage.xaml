@@ -1,9 +1,0 @@
-<Page x:Class="OpenclawGuard.Pages.GuardPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Spacing="16" Margin="32">
-        <TextBlock Text="Process Guard" Style="{ThemeResource TitleTextBlockStyle}"/>
-        <TextBlock Text="Monitor processes, auto-restart on crash"/>
-        <Button Content="+ Add Guard" Width="140" HorizontalAlignment="Left"/>
-    </StackPanel>
-</Page>

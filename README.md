@@ -13,7 +13,7 @@
 
 ## 版本
 
-当前版本: **v1.0.3** | [更新日志](CHANGELOG.md)
+当前版本: **v1.5.0** | [更新日志](CHANGELOG.md)
 
 ## 功能特性
 
@@ -48,9 +48,10 @@
 ### 界面
 - Windows 11 Mica / Acrylic 毛玻璃特效
 - 深色 / 浅色 / 跟随系统主题
-- 自绘阴影卡片（偏移圆角矩形，45° 方向）
-- 侧边栏渐变过渡融合 Mica 背景
-- 导航按钮左侧竖线指示器
+- 高斯模糊阴影卡片 + 顶部渐变装饰条
+- 侧边栏滑动指示器（页面切换时平滑过渡）
+- 页面卡片交错入场动画（OutQuart 缓动 + 递减延迟）
+- 导航按钮 hover 物理反馈（文字位移 + 背景渐变）
 - DPI 缩放自适应（PassThrough 策略）
 - GPU 加速渲染（OpenGL + 2x MSAA）
 
@@ -70,7 +71,7 @@
 | 编译器 | Clang 17 (LLVM MinGW) |
 | DWM 特效 | Windows DWM API (Mica / Acrylic) |
 | GPU 渲染 | OpenGL (QSurfaceFormat) |
-| 阴影 | 自绘 ShadowCard（QPainter 裁剪路径） |
+| 阴影 | QGraphicsDropShadowEffect (高斯模糊) |
 
 ## 构建
 
@@ -119,10 +120,12 @@ OpenclawGuard/
 │   ├── traymanager.cpp/h     # 系统托盘（实时网关状态）
 │   ├── settings.cpp/h        # 配置持久化（QSettings）
 │   ├── config.h              # 常量定义
-│   ├── toggle_switch.cpp/h   # 自定义开关控件
-│   └── backend.cpp/h         # 后端工具类
+│   └── toggle_switch.cpp/h   # 自定义开关控件
 ├── resources/
-│   └── icons/                # SVG 图标
+│   └── icons/                # SVG 图标 (Lucide)
+├── docs/
+│   ├── screenshot-dark.png   # 深色主题截图
+│   └── screenshot-light.png  # 浅色主题截图
 ├── CMakeLists.txt
 ├── CHANGELOG.md
 ├── .gitignore

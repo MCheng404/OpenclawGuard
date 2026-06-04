@@ -1,18 +1,37 @@
 # 更新日志
 
-## v1.1.0 (2026-06-03)
+## v1.5.0 (2026-06-05)
+
+### 新增
+- 侧边栏滑动指示器（页面切换时蓝色条平滑滑动，320ms OutQuart）
+- 页面卡片交错入场动画（递减延迟 + 22px 上移 + OutQuart 缓动）
+- 统计卡片顶部渐变装饰条（蓝→紫，亚克力质感）
+- ShadowCard 高斯模糊阴影（QGraphicsDropShadowEffect，blurRadius=28）
+- 卡片顶部高光线（亚克力质感渐变）
 
 ### 优化
-- 侧边栏浮空化（16px 圆角 + 外包围容器 + 呼吸边距）
-- ComboBox 下拉框现代化（蓝色 hover、chevron 图标、10px 圆角列表、hover 高亮）
-- SpinBox 现代化（独立样式、自定义 22px 上下按钮、chevron 图标）
-- 页面标题全部加 32px 图标
-- 表格行 hover/selected 左侧 3px 蓝色指示条
-- 表头底部 2px 强调线 + letter-spacing 增强
-- Hero 卡片 45° 对角渐变背景
-- 状态胶囊新增 success/warning/danger 变体
-- 空状态样式增强（更大 padding、微蓝底色）
-- 新增 chevron-up/down SVG 图标
+- 导航按钮 hover 文字微右移 2px（物理反馈）
+- 主按钮 hover/pressed padding 微移（按下感）
+- 仪表盘卡片 hover 增强边框 + 背景色变化
+- 活动列表 hover 文字颜色变化
+- 滚动条更纤细（10px → 8px）
+- 缓动曲线全面升级为 OutQuart（更有「着陆感」）
+
+### 清理
+- 移除废弃的 pyui/（Python 原型）
+- 移除废弃的 qml/（QML 原型）
+- 移除废弃的 winui/（WinUI 3 原型）
+- 移除 docs/superpowers/（过期设计文档）
+
+## v1.2.0 (2026-06-03)
+
+### 优化
+- 现代化按钮重设计
+
+## v1.1.3 (2026-06-03)
+
+### 优化
+- 主题感知委托、键盘快捷键
 
 ## v1.0.3 (2026-06-03)
 
