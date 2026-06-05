@@ -75,6 +75,18 @@ public:
     QString accentColor() const;     // hex, 默认 #4f8cff
     void setAccentColor(const QString &hex);
 
+    // Liquid Glass
+    bool liquidGlassEnabled() const;
+    void setLiquidGlassEnabled(bool on);
+    int  liquidGlassBlur() const;        // 4-40, 默认 18
+    void setLiquidGlassBlur(int r);
+    int  liquidGlassRefraction() const;  // 10-80, 默认 45
+    void setLiquidGlassRefraction(int pct);
+    int  liquidGlassGlow() const;        // 0-80, 默认 35
+    void setLiquidGlassGlow(int pct);
+    int  liquidGlassNoise() const;       // 0-20, 默认 4
+    void setLiquidGlassNoise(int pct);
+
     // 窗口状态
     QByteArray windowGeometry() const;
     void setWindowGeometry(const QByteArray &g);

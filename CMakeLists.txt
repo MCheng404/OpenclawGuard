@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenclawGuard VERSION 1.7.0 LANGUAGES CXX)
+project(OpenclawGuard VERSION 1.8.0 LANGUAGES CXX)
 
 # 构建类型
 if(NOT CMAKE_BUILD_TYPE)
@@ -49,6 +49,8 @@ set(SOURCES
     src/toggle_switch.cpp
     src/modernslider.h
     src/modernslider.cpp
+    src/liquidglasscard.h
+    src/liquidglasscard.cpp
     src/traymanager.h
     src/traymanager.cpp
     src/mica_helper.cpp

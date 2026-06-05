@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "config.h"
+#include "liquidglasscard.h"
 #include "settings.h"
 #include "theme.h"
 #include <QVBoxLayout>
@@ -45,67 +46,9 @@
 #include <QMouseEvent>
 #include <functional>
 
-// ═══ 自绘阴影卡片（高斯模糊阴影 + 亚克力质感） ═══
-class ShadowCard : public QFrame {
-public:
-    explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
-        setContentsMargins(10, 10, 10, 10);
-        setAttribute(Qt::WA_TranslucentBackground);
-        m_shadow = new QGraphicsDropShadowEffect(this);
-        m_radius = AppSettings.cardRadius();
-        m_opacity = AppSettings.cardOpacity();
-        int si = AppSettings.shadowIntensity();
-        m_shadow->setBlurRadius(qBound(8, si * 56 / 100, 56));
-        m_shadow->setOffset(0, 6);
-        m_shadow->setColor(QColor(0, 0, 0, si * 80 / 100));
-        setGraphicsEffect(m_shadow);
-    }
-    void refreshStyle() {
-        int opacity = AppSettings.cardOpacity();
-        int radius = AppSettings.cardRadius();
-        int shadow = AppSettings.shadowIntensity();
-        m_shadow->setBlurRadius(qBound(8, shadow * 56 / 100, 56));
-        m_shadow->setColor(QColor(0, 0, 0, shadow * 80 / 100));
-        m_radius = radius;
-        m_opacity = opacity;
-        update();
-    }
-protected:
-    void paintEvent(QPaintEvent *) override {
-        QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing, true);
-
-        const int m = 10;
-        QRect cardRect(m, m, width() - m*2, height() - m*2);
-        int cr = m_radius;
-
-        // 用 palette 色（跟随色温）
-        QColor cardBg = palette().color(QPalette::Base);
-        cardBg.setAlpha(m_opacity * 255 / 100);
-        QColor borderColor = palette().color(QPalette::Text);
-        borderColor.setAlphaF(0.08);
-
-        p.setBrush(cardBg);
-        p.setPen(QPen(borderColor, 1));
-        p.drawRoundedRect(cardRect, cr, cr);
-
-        // 顶部高光线
-        bool isDark = palette().color(QPalette::Base).value() < 128;
-        QLinearGradient topHighlight(cardRect.topLeft(), cardRect.topRight());
-        topHighlight.setColorAt(0, QColor(255, 255, 255, 0));
-        topHighlight.setColorAt(0.5, QColor(255, 255, 255, isDark ? 10 : 18));
-        topHighlight.setColorAt(1, QColor(255, 255, 255, 0));
-        p.setPen(QPen(QBrush(topHighlight), 1));
-        p.setBrush(Qt::NoBrush);
-        p.drawRoundedRect(QRectF(cardRect).adjusted(0.5, 0.5, -0.5, -0.5), cr, cr);
-
-        p.end();
-    }
-private:
-    QGraphicsDropShadowEffect *m_shadow = nullptr;
-    int m_radius = 16;
-    int m_opacity = 100;
-};
+// ═══ 自绘阴影卡片（高斯模糊阴影 + 亚克力质感 + Liquid Glass） ═══
+// 使用 LiquidGlassCard 替代，支持 normal + liquid glass 双模式
+using ShadowCard = LiquidGlassCard;
 
 // 图标加载辅助
 static QIcon loadSvgIcon(const QString &name) {
@@ -1157,6 +1100,11 @@ void MainWindow::setupPages()
             m_cardOpacitySlider->setValue(100);
             m_cardRadiusSlider->setValue(16);
             m_shadowSlider->setValue(50);
+            m_glassToggle->setChecked(false);
+            m_glassBlurSlider->setValue(18);
+            m_glassRefractionSlider->setValue(45);
+            m_glassGlowSlider->setValue(35);
+            m_glassNoiseSlider->setValue(4);
             m_themeCombo->setCurrentIndex(0);
             updateStatusBar("已恢复默认设置");
         }
@@ -1391,6 +1339,73 @@ void MainWindow::setupPages()
 
     stLayout->addWidget(m_uiCustomCard);
 
+    // Liquid Glass 效果
+    auto *glassCard = createCard();
+    glassCard->setProperty("dashboardCard", true);
+    auto *glassInner = static_cast<QVBoxLayout*>(glassCard->layout());
+    glassInner->setSpacing(12);
+    auto *glassHeader = new QHBoxLayout();
+    glassHeader->setSpacing(8);
+    auto *glassIcon = new QLabel();
+    glassIcon->setPixmap(loadSvgIcon("droplets").pixmap(18, 18));
+    glassIcon->setFixedSize(22, 22);
+    auto *glassTitle = new QLabel("Liquid Glass");
+    glassTitle->setObjectName("sectionTitle");
+    glassHeader->addWidget(glassIcon);
+    glassHeader->addWidget(glassTitle);
+    glassHeader->addStretch();
+    glassInner->addLayout(glassHeader);
+    auto *glassDesc = new QLabel("iOS 风格液体玻璃效果，折射模糊背景 + 辉光边缘 + 色散");
+    glassDesc->setObjectName("helperText");
+    glassInner->addWidget(glassDesc);
+
+    // 开关
+    auto *glassToggleRow = new QHBoxLayout();
+    glassToggleRow->setSpacing(12);
+    auto *glassToggleLabel = new QLabel("启用效果");
+    glassToggleLabel->setObjectName("fieldLabel");
+    m_glassToggle = new ToggleSwitch();
+    m_glassToggle->setChecked(AppSettings.liquidGlassEnabled());
+    glassToggleRow->addWidget(glassToggleLabel);
+    glassToggleRow->addWidget(m_glassToggle);
+    glassToggleRow->addStretch();
+    glassInner->addLayout(glassToggleRow);
+
+    // 参数滑动条容器（开关控制显示/隐藏）
+    m_glassSlidersContainer = new QWidget();
+    auto *glassSlidersLayout = new QVBoxLayout(m_glassSlidersContainer);
+    glassSlidersLayout->setContentsMargins(0, 0, 0, 0);
+    glassSlidersLayout->setSpacing(12);
+
+    auto addGlassSlider = [&](const QString &label, int min, int max, int val, int step,
+                              ModernSlider *&slider, QLabel *&valLabel) {
+        auto *row = new QVBoxLayout(); row->setSpacing(6);
+        auto *h = new QHBoxLayout(); h->setSpacing(8);
+        auto *l = new QLabel(label); l->setObjectName("fieldLabel");
+        valLabel = new QLabel(QString("%1").arg(val));
+        valLabel->setObjectName("sliderValueLabel");
+        h->addWidget(l); h->addStretch(); h->addWidget(valLabel);
+        slider = new ModernSlider();
+        slider->setRange(min, max);
+        slider->setSingleStep(step);
+        slider->setValue(val);
+        row->addLayout(h); row->addWidget(slider);
+        glassSlidersLayout->addLayout(row);
+    };
+
+    addGlassSlider("模糊强度", 4, 40, AppSettings.liquidGlassBlur(), 1,
+                   m_glassBlurSlider, m_glassBlurLabel);
+    addGlassSlider("折射强度", 10, 80, AppSettings.liquidGlassRefraction(), 1,
+                   m_glassRefractionSlider, m_glassRefractionLabel);
+    addGlassSlider("辉光强度", 0, 80, AppSettings.liquidGlassGlow(), 1,
+                   m_glassGlowSlider, m_glassGlowLabel);
+    addGlassSlider("噪点强度", 0, 20, AppSettings.liquidGlassNoise(), 1,
+                   m_glassNoiseSlider, m_glassNoiseLabel);
+
+    m_glassSlidersContainer->setVisible(AppSettings.liquidGlassEnabled());
+    glassInner->addWidget(m_glassSlidersContainer);
+    stLayout->addWidget(glassCard);
+
     // 更新与网络
     auto *tokenCard = createCard();
     tokenCard->setProperty("dashboardCard", true);
@@ -1583,6 +1598,33 @@ void MainWindow::setupConnections()
     connect(m_shadowSlider, &QSlider::valueChanged, this, [this](int v) {
         m_shadowLabel->setText(QString("%1%").arg(v));
         AppSettings.setShadowIntensity(v);
+        applyUiCustomization();
+    });
+
+    // Liquid Glass
+    connect(m_glassToggle, &QAbstractButton::toggled, this, [this](bool on) {
+        AppSettings.setLiquidGlassEnabled(on);
+        m_glassSlidersContainer->setVisible(on);
+        applyUiCustomization();
+    });
+    connect(m_glassBlurSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_glassBlurLabel->setText(QString::number(v));
+        AppSettings.setLiquidGlassBlur(v);
+        applyUiCustomization();
+    });
+    connect(m_glassRefractionSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_glassRefractionLabel->setText(QString::number(v));
+        AppSettings.setLiquidGlassRefraction(v);
+        applyUiCustomization();
+    });
+    connect(m_glassGlowSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_glassGlowLabel->setText(QString::number(v));
+        AppSettings.setLiquidGlassGlow(v);
+        applyUiCustomization();
+    });
+    connect(m_glassNoiseSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_glassNoiseLabel->setText(QString::number(v));
+        AppSettings.setLiquidGlassNoise(v);
         applyUiCustomization();
     });
 
@@ -2223,8 +2265,21 @@ void MainWindow::updateColorTempVisibility()
 
 void MainWindow::applyUiCustomization()
 {
-    for (auto *frame : m_allShadowCards)
-        static_cast<ShadowCard*>(frame)->refreshStyle();
+    bool glass = AppSettings.liquidGlassEnabled();
+    int blur = AppSettings.liquidGlassBlur();
+    float refr = AppSettings.liquidGlassRefraction() / 100.0f;
+    float glow = AppSettings.liquidGlassGlow() / 100.0f;
+    float noise = AppSettings.liquidGlassNoise() / 100.0f;
+
+    for (auto *frame : m_allShadowCards) {
+        auto *card = static_cast<LiquidGlassCard*>(frame);
+        card->setGlassEnabled(glass);
+        card->setBlurRadius(blur);
+        card->setRefraction(refr);
+        card->setGlowIntensity(glow);
+        card->setNoiseAmount(noise);
+        card->refreshStyle();
+    }
     update();
 }
 

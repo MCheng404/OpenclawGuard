@@ -149,6 +149,18 @@ private:
     QWidget      *m_uiCustomCard = nullptr;
     QVector<QFrame*> m_allShadowCards;  // 所有 ShadowCard 引用
 
+    // Liquid Glass
+    ToggleSwitch *m_glassToggle = nullptr;
+    ModernSlider *m_glassBlurSlider = nullptr;
+    QLabel       *m_glassBlurLabel = nullptr;
+    ModernSlider *m_glassRefractionSlider = nullptr;
+    QLabel       *m_glassRefractionLabel = nullptr;
+    ModernSlider *m_glassGlowSlider = nullptr;
+    QLabel       *m_glassGlowLabel = nullptr;
+    ModernSlider *m_glassNoiseSlider = nullptr;
+    QLabel       *m_glassNoiseLabel = nullptr;
+    QWidget      *m_glassSlidersContainer = nullptr;
+
     void applyColorTemperature(int kelvin);
     void updateColorTempVisibility();
     void applyUiCustomization();
