@@ -61,6 +61,10 @@ public:
     int  smartGuardMemThreshold() const;
     void setSmartGuardMemThreshold(int pct);
 
+    // 色温 (Kelvin, 3000-7000, 默认 6500)
+    int  colorTemperature() const;
+    void setColorTemperature(int kelvin);
+
     // 窗口状态
     QByteArray windowGeometry() const;
     void setWindowGeometry(const QByteArray &g);

@@ -3,6 +3,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QSlider>
+#include "modernslider.h"
 #include <QPushButton>
 #include <QCheckBox>
 #include <QComboBox>
@@ -108,6 +110,7 @@ private:
     QFrame      *m_sidebarBrandCard = nullptr;
     QFrame      *m_sidebarContextCard = nullptr;
     bool         m_sidebarCompact = false;
+    bool         m_loading = false;  // loadSettings 期间阻止 onThemeChanged
 
     // 动画
     QPropertyAnimation       *m_pulseAnim = nullptr;
@@ -125,8 +128,17 @@ private:
 
     // 开机自启
     QCheckBox    *m_autoStartCheck = nullptr;
-    QSpinBox     *m_cpuSpin = nullptr;
-    QSpinBox     *m_memSpin = nullptr;
+    ModernSlider *m_cpuSlider = nullptr;
+    QLabel       *m_cpuValueLabel = nullptr;
+    ModernSlider *m_memSlider = nullptr;
+    QLabel       *m_memValueLabel = nullptr;
+
+    // 色温
+    ModernSlider *m_colorTempSlider = nullptr;
+    QLabel       *m_colorTempValueLabel = nullptr;
+    QWidget      *m_colorOverlay = nullptr;  // 色温叠加层
+
+    void applyColorTemperature(int kelvin);
 
     // GitHub Token
     QLineEdit    *m_githubTokenEdit = nullptr;

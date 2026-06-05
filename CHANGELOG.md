@@ -1,5 +1,24 @@
 # 更新日志
 
+## v1.6.0 (2026-06-06)
+
+### 新增
+- 全局色温调节（3000K–7000K，Tanner Helland 算法实时 RGB 映射）
+- 色温叠加层渲染（半透明覆盖，色温偏移越大效果越明显）
+- ModernSlider 自定义绘制控件（渐变轨道 + 圆形 handle + 悬浮动画 + 自绘圆角 tooltip）
+- 设置页滑动条支持鼠标拖动 + 滚轮调整
+
+### 优化
+- 主题切换改为动态应用，无需重启程序
+- 滑动条 tooltip 自绘，避免 Windows 原生 tooltip 直角问题
+- 进程表格移除“启用”列标题
+
+### 修复
+- 修复启动时因 loadSettings 触发 onThemeChanged 导致无限重启
+- 修复 QSharedMemory 竞态弹出“程序已在运行中”（改用 Windows Named Mutex）
+- 修复滑动条鼠标无法拖动（重写 mousePressEvent/mouseMoveEvent）
+- 版本号升级至 v1.6.0
+
 ## v1.5.0 (2026-06-05)
 
 ### 新增

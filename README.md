@@ -13,7 +13,7 @@
 
 ## 版本
 
-当前版本: **v1.5.0** | [更新日志](CHANGELOG.md)
+当前版本: **v1.6.0** | [更新日志](CHANGELOG.md)
 
 ## 功能特性
 
@@ -47,7 +47,9 @@
 
 ### 界面
 - Windows 11 Mica / Acrylic 毛玻璃特效
-- 深色 / 浅色 / 跟随系统主题
+- 深色 / 浅色 / 跟随系统主题（动态切换，无需重启）
+- 全局色温调节（3000K–7000K，实时叠加渲染）
+- 自定义绘制 ModernSlider（渐变轨道 + 圆形 handle + 悬浮动画 + 自绘 tooltip）
 - 高斯模糊阴影卡片 + 顶部渐变装饰条
 - 侧边栏滑动指示器（页面切换时平滑过渡）
 - 页面卡片交错入场动画（OutQuart 缓动 + 递减延迟）
@@ -57,7 +59,8 @@
 
 ### 设置
 - GitHub Token 管理（显示/隐藏切换）
-- 智能拉起阈值配置（CPU / 内存）
+- 智能拉起阈值配置（CPU / 内存滑动条）
+- 色温调节（暖黄 → 中性 → 冷蓝）
 - 开机自启管理
 - GitHub 项目链接
 
@@ -120,7 +123,8 @@ OpenclawGuard/
 │   ├── traymanager.cpp/h     # 系统托盘（实时网关状态）
 │   ├── settings.cpp/h        # 配置持久化（QSettings）
 │   ├── config.h              # 常量定义
-│   └── toggle_switch.cpp/h   # 自定义开关控件
+│   ├── toggle_switch.cpp/h   # 自定义开关控件
+│   └── modernslider.cpp/h    # 自定义滑动条（渐变轨道 + 色温渲染）
 ├── resources/
 │   └── icons/                # SVG 图标 (Lucide)
 ├── docs/

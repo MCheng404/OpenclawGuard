@@ -827,7 +827,7 @@ void MainWindow::setupPages()
     gdTblInner->addWidget(m_guardEmptyState);
     m_guardTable = new QTableWidget();
     m_guardTable->setColumnCount(4);
-    m_guardTable->setHorizontalHeaderLabels({"名称", "路径", "状态", "启用"});
+    m_guardTable->setHorizontalHeaderLabels({"名称", "路径", "状态", ""});
     m_guardTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_guardTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_guardTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -1163,35 +1163,102 @@ void MainWindow::setupPages()
     smartDesc->setObjectName("helperText");
     smartInner->addWidget(smartDesc);
 
-    auto *thresholdRow = new QHBoxLayout();
-    thresholdRow->setSpacing(24);
-    auto *cpuGroup = new QHBoxLayout();
-    cpuGroup->setSpacing(8);
+    // CPU 阈值滑动条
+    auto *cpuRow = new QVBoxLayout();
+    cpuRow->setSpacing(6);
+    auto *cpuHeader = new QHBoxLayout();
+    cpuHeader->setSpacing(8);
     auto *cpuLabel = new QLabel("CPU 阈值");
     cpuLabel->setObjectName("fieldLabel");
-    m_cpuSpin = new QSpinBox();
-    m_cpuSpin->setSuffix("%");
-    m_cpuSpin->setRange(10, 100);
-    m_cpuSpin->setFixedWidth(90);
-    m_cpuSpin->setValue(AppSettings.smartGuardCpuThreshold());
-    cpuGroup->addWidget(cpuLabel);
-    cpuGroup->addWidget(m_cpuSpin);
-    thresholdRow->addLayout(cpuGroup);
-    auto *memGroup = new QHBoxLayout();
-    memGroup->setSpacing(8);
+    m_cpuValueLabel = new QLabel(QString("%1%").arg(AppSettings.smartGuardCpuThreshold()));
+    m_cpuValueLabel->setObjectName("sliderValueLabel");
+    cpuHeader->addWidget(cpuLabel);
+    cpuHeader->addStretch();
+    cpuHeader->addWidget(m_cpuValueLabel);
+    m_cpuSlider = new ModernSlider();
+    m_cpuSlider->setRange(10, 100);
+    m_cpuSlider->setValue(AppSettings.smartGuardCpuThreshold());
+    cpuRow->addLayout(cpuHeader);
+    cpuRow->addWidget(m_cpuSlider);
+    smartInner->addLayout(cpuRow);
+
+    // 内存阈值滑动条
+    auto *memRow = new QVBoxLayout();
+    memRow->setSpacing(6);
+    auto *memHeader = new QHBoxLayout();
+    memHeader->setSpacing(8);
     auto *memLabel = new QLabel("内存阈值");
     memLabel->setObjectName("fieldLabel");
-    m_memSpin = new QSpinBox();
-    m_memSpin->setSuffix("%");
-    m_memSpin->setRange(10, 100);
-    m_memSpin->setFixedWidth(90);
-    m_memSpin->setValue(AppSettings.smartGuardMemThreshold());
-    memGroup->addWidget(memLabel);
-    memGroup->addWidget(m_memSpin);
-    thresholdRow->addLayout(memGroup);
-    thresholdRow->addStretch();
-    smartInner->addLayout(thresholdRow);
+    m_memValueLabel = new QLabel(QString("%1%").arg(AppSettings.smartGuardMemThreshold()));
+    m_memValueLabel->setObjectName("sliderValueLabel");
+    memHeader->addWidget(memLabel);
+    memHeader->addStretch();
+    memHeader->addWidget(m_memValueLabel);
+    m_memSlider = new ModernSlider();
+    m_memSlider->setRange(10, 100);
+    m_memSlider->setValue(AppSettings.smartGuardMemThreshold());
+    memRow->addLayout(memHeader);
+    memRow->addWidget(m_memSlider);
+    smartInner->addLayout(memRow);
     stLayout->addWidget(smartCard);
+
+    // 色温调节
+    auto *tempCard = createCard();
+    tempCard->setProperty("dashboardCard", true);
+    auto *tempInner = static_cast<QVBoxLayout*>(tempCard->layout());
+    tempInner->setSpacing(12);
+    auto *tempHeader = new QHBoxLayout();
+    tempHeader->setSpacing(8);
+    auto *tempIcon = new QLabel();
+    tempIcon->setPixmap(loadSvgIcon("sun").pixmap(18, 18));
+    tempIcon->setFixedSize(22, 22);
+    auto *tempTitle = new QLabel("色温调节");
+    tempTitle->setObjectName("sectionTitle");
+    tempHeader->addWidget(tempIcon);
+    tempHeader->addWidget(tempTitle);
+    tempHeader->addStretch();
+    tempInner->addLayout(tempHeader);
+    auto *tempDesc = new QLabel("调整屏幕色温冷暖，数值越低越暖（偏黄），越高越冷（偏蓝）");
+    tempDesc->setObjectName("helperText");
+    tempInner->addWidget(tempDesc);
+
+    auto *tempRow = new QVBoxLayout();
+    tempRow->setSpacing(6);
+    auto *tempSliderHeader = new QHBoxLayout();
+    tempSliderHeader->setSpacing(8);
+    auto *tempLabel = new QLabel("全局色温");
+    tempLabel->setObjectName("fieldLabel");
+    m_colorTempValueLabel = new QLabel(QString("%1 K").arg(AppSettings.colorTemperature()));
+    m_colorTempValueLabel->setObjectName("sliderValueLabel");
+    tempSliderHeader->addWidget(tempLabel);
+    tempSliderHeader->addStretch();
+    tempSliderHeader->addWidget(m_colorTempValueLabel);
+    m_colorTempSlider = new ModernSlider();
+    m_colorTempSlider->setColorTempStyle(true);
+    m_colorTempSlider->setRange(3000, 7000);
+    m_colorTempSlider->setSingleStep(100);
+    m_colorTempSlider->setPageStep(500);
+    m_colorTempSlider->setValue(AppSettings.colorTemperature());
+    tempRow->addLayout(tempSliderHeader);
+    tempRow->addWidget(m_colorTempSlider);
+    tempInner->addLayout(tempRow);
+
+    // 色温刻度标签
+    auto *scaleRow = new QHBoxLayout();
+    scaleRow->setSpacing(0);
+    auto *scaleWarm = new QLabel("3000K 暖");
+    scaleWarm->setObjectName("helperText");
+    auto *scaleNeutral = new QLabel("6500K 中性");
+    scaleNeutral->setObjectName("helperText");
+    scaleNeutral->setAlignment(Qt::AlignCenter);
+    auto *scaleCool = new QLabel("7000K 冷");
+    scaleCool->setObjectName("helperText");
+    scaleCool->setAlignment(Qt::AlignRight);
+    scaleRow->addWidget(scaleWarm);
+    scaleRow->addWidget(scaleNeutral);
+    scaleRow->addWidget(scaleCool);
+    tempInner->addLayout(scaleRow);
+    stLayout->addWidget(tempCard);
 
     // 恢复默认
     auto *resetRow = new QHBoxLayout();
@@ -1202,12 +1269,13 @@ void MainWindow::setupPages()
     resetBtn->setCursor(Qt::PointingHandCursor);
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
         auto r = QMessageBox::question(this, "恢复默认",
-            "确定将智能拉起阈值和主题恢复为默认值？\n\n"
-            "CPU: 80%  |  内存: 85%  |  主题: 跟随系统",
+            "确定将所有设置恢复为默认值？\n\n"
+            "CPU: 80%  |  内存: 85%  |  色温: 6500K  |  主题: 跟随系统",
             QMessageBox::Yes | QMessageBox::No);
         if (r == QMessageBox::Yes) {
-            m_cpuSpin->setValue(80);
-            m_memSpin->setValue(85);
+            m_cpuSlider->setValue(80);
+            m_memSlider->setValue(85);
+            m_colorTempSlider->setValue(6500);
             m_themeCombo->setCurrentIndex(0);
             updateStatusBar("已恢复默认设置");
         }
@@ -1354,6 +1422,13 @@ void MainWindow::setupUI()
     bodyRow->addWidget(m_pages, 1);
     root->addLayout(bodyRow, 1);
 
+    // 色温叠加层（半透明覆盖整个窗口）
+    m_colorOverlay = new QWidget(central);
+    m_colorOverlay->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_colorOverlay->setAttribute(Qt::WA_TranslucentBackground, true);
+    m_colorOverlay->setStyleSheet("background: transparent;");
+    m_colorOverlay->hide();
+
     // 状态栏
     auto *statusBar = new QStatusBar();
     m_statusMsg = new QLabel("就绪");
@@ -1379,12 +1454,19 @@ void MainWindow::setupConnections()
     connect(m_tray, &TrayManager::restartGatewayRequested,
             this, &MainWindow::onRestartGateway);
 
-    //   SpinBox 阈值自动保存
-    connect(m_cpuSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [](int v) {
+    //   阈值滑动条自动保存
+    connect(m_cpuSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_cpuValueLabel->setText(QString("%1%").arg(v));
         AppSettings.setSmartGuardCpuThreshold(v);
     });
-    connect(m_memSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [](int v) {
+    connect(m_memSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_memValueLabel->setText(QString("%1%").arg(v));
         AppSettings.setSmartGuardMemThreshold(v);
+    });
+    connect(m_colorTempSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_colorTempValueLabel->setText(QString("%1 K").arg(v));
+        AppSettings.setColorTemperature(v);
+        applyColorTemperature(v);
     });
 
     //   键盘快捷键
@@ -1586,11 +1668,11 @@ void MainWindow::setupConnections()
     });
 
     // 智能拉起阈值
-    connect(m_cpuSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
+    connect(m_cpuSlider, &QSlider::valueChanged, this, [this](int v) {
         AppSettings.setSmartGuardCpuThreshold(v);
         m_guard->setCpuThreshold(v);
     });
-    connect(m_memSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
+    connect(m_memSlider, &QSlider::valueChanged, this, [this](int v) {
         AppSettings.setSmartGuardMemThreshold(v);
         m_guard->setMemThreshold(v);
     });
@@ -1965,18 +2047,44 @@ void MainWindow::onEnvUpdateFinished(const QString &name, bool success, const QS
 
 void MainWindow::onThemeChanged(int idx)
 {
+    if (m_loading) return;
+
     QString themes[] = {"system", "light", "dark"};
     AppSettings.setTheme(themes[idx]);
 
-    // 简单粗暴：保存主题后重启程序，避免 DWM Mica 过渡动画白闪
-    QMessageBox::information(this, "切换主题",
-        "主题已保存，程序将重新启动以应用新主题。");
+    // 动态切换主题，无需重启
+    Theme::applyTheme(themes[idx]);
+    Theme::enableMica(winId());
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
+    updateStatusBar("主题已切换");
+}
 
-    // 启动新实例
-    QProcess::startDetached(QCoreApplication::applicationFilePath(),
-                            QCoreApplication::arguments());
-    // 退出当前实例
-    qApp->quit();
+void MainWindow::applyColorTemperature(int kelvin)
+{
+    if (!m_colorOverlay) return;
+
+    if (kelvin == 6500) {
+        // 中性色温，隐藏叠加层
+        m_colorOverlay->hide();
+        return;
+    }
+
+    // 计算色温颜色
+    QColor tempColor = ModernSlider::kelvinToRGB(kelvin);
+
+    // 色温偏移越大，叠加层越明显
+    // 3000K → alpha 35,  7000K → alpha 35,  6500K → 0
+    qreal dist = qAbs(kelvin - 6500.0) / 500.0;  // 0~1
+    int alpha = qBound(0, (int)(dist * 35), 45);
+
+    m_colorOverlay->setStyleSheet(
+        QString("background: rgba(%1, %2, %3, %4);")
+            .arg(tempColor.red()).arg(tempColor.green())
+            .arg(tempColor.blue()).arg(alpha));
+    m_colorOverlay->show();
+    m_colorOverlay->raise();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -2004,6 +2112,9 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
     updateResponsiveLayout();
+    if (m_colorOverlay && m_colorOverlay->isVisible() && centralWidget()) {
+        m_colorOverlay->setGeometry(centralWidget()->rect());
+    }
 }
 
 // ====================== 页面卡片交错入场动画 ======================
@@ -2068,6 +2179,7 @@ void MainWindow::animatePageCards(QWidget *page)
 
 void MainWindow::loadSettings()
 {
+    m_loading = true;
     int port = AppSettings.gatewayPort();
     m_portSpin->setValue(port);
     m_gateway->setPort(port);
@@ -2084,6 +2196,8 @@ void MainWindow::loadSettings()
 
     m_guard->setCpuThreshold(AppSettings.smartGuardCpuThreshold());
     m_guard->setMemThreshold(AppSettings.smartGuardMemThreshold());
+
+    m_colorTempSlider->setValue(AppSettings.colorTemperature());
 
     // 恢复窗口位置和大小
     QByteArray geo = AppSettings.windowGeometry();
@@ -2108,6 +2222,8 @@ void MainWindow::loadSettings()
     QString savedToken = AppSettings.githubToken();
     if (!savedToken.isEmpty())
         m_githubTokenEdit->setText(savedToken);
+
+    m_loading = false;
 }
 
 void MainWindow::saveSettings() {}

@@ -150,6 +150,16 @@ void Settings::setSmartGuardMemThreshold(int pct)
     s.setValue("guard/memThreshold", pct);
 }
 
+int Settings::colorTemperature() const
+{
+    return s.value("ui/colorTemperature", 6500).toInt();
+}
+
+void Settings::setColorTemperature(int kelvin)
+{
+    s.setValue("ui/colorTemperature", kelvin);
+}
+
 QByteArray Settings::windowGeometry() const
 {
     return s.value("ui/geometry").toByteArray();
