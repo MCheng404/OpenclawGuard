@@ -879,6 +879,7 @@ void MainWindow::setupPages()
     m_ocChannelLabel  = new QLabel(QStringLiteral("—"));
     m_ocInstallLabel  = new QLabel(QStringLiteral("—"));
     m_ocAvailableLabel = new QLabel(QStringLiteral("—"));
+    m_ocLatestVersionLabel = new QLabel(QStringLiteral("—"));
 
     auto makeStatusMini = [&](const QString &iconName, const QString &title, QLabel *valLabel) -> QFrame * {
         auto *c = createCard();
@@ -906,6 +907,7 @@ void MainWindow::setupPages()
     };
 
     statusGrid->addWidget(makeStatusMini("server",         "当前版本", m_ocVersionLabel));
+    statusGrid->addWidget(makeStatusMini("package",        "最新版本", m_ocLatestVersionLabel));
     statusGrid->addWidget(makeStatusMini("download-cloud",  "更新通道", m_ocChannelLabel));
     statusGrid->addWidget(makeStatusMini("settings",        "安装方式", m_ocInstallLabel));
     statusGrid->addWidget(makeStatusMini("refresh-cw",      "可用更新", m_ocAvailableLabel));
@@ -1615,6 +1617,26 @@ void MainWindow::setupConnections()
         m_ocAvailableLabel->setStyleSheet(available
             ? "color: #f59e0b; font-weight: 600;"
             : "color: #34d399; font-weight: 600;");
+
+        // 用 npm 查询最新版本（只查不装）
+        m_updater->fetchLatestVersionNpm(channelValue);
+    });
+    connect(m_updater, &UpdateManager::latestVersionFetched, this,
+            [this](const QString &version, const QString &error) {
+        if (!version.isEmpty()) {
+            m_ocLatestVersionLabel->setText(version);
+            // 对比当前版本和最新版本
+            QString current = m_updater->getCurrentVersion();
+            bool available = (!current.isEmpty() && current != version);
+            m_ocAvailableLabel->setText(available
+                ? QString("有更新 → %1").arg(version)
+                : "已是最新");
+            m_ocAvailableLabel->setStyleSheet(available
+                ? "color: #f59e0b; font-weight: 600;"
+                : "color: #34d399; font-weight: 600;");
+        } else {
+            m_ocLatestVersionLabel->setText("查询失败");
+        }
     });
     connect(m_updater, &UpdateManager::openclawUpdateFinished, this,
             [this](bool success, const QString &msg) {
@@ -2114,12 +2136,12 @@ void MainWindow::applyColorTemperature(int kelvin)
     // 色温 → RGB，计算混合比例
     QColor tempColor = ModernSlider::kelvinToRGB(kelvin);
     qreal dist = qAbs(kelvin - 6500.0) / 3500.0;  // 0~1
-    qreal factor = qBound(0.0, dist * 0.35, 0.40);  // 最大混合 40%
+    qreal factor = qBound(0.0, dist * 0.25, 0.30);  // 最大混合 30%
 
     // 获取当前调色板并叠加色温
     QPalette pal = qApp->palette();
 
-    auto blend = [&](QPalette::ColorRole role) {
+    auto blendText = [&](QPalette::ColorRole role) {
         QColor orig = pal.color(role);
         QColor blended;
         blended.setRgbF(
@@ -2130,13 +2152,10 @@ void MainWindow::applyColorTemperature(int kelvin)
         pal.setColor(role, blended);
     };
 
-    // 只染文字和背景，不碰高亮/按钮等交互色
-    blend(QPalette::WindowText);
-    blend(QPalette::Text);
-    blend(QPalette::Base);
-    blend(QPalette::Window);
-    blend(QPalette::ToolTipText);
-    blend(QPalette::ToolTipBase);
+    // 只染文字，不碰背景和交互色
+    blendText(QPalette::WindowText);
+    blendText(QPalette::Text);
+    blendText(QPalette::ToolTipText);
 
     qApp->setPalette(pal);
 

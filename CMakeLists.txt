@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenclawGuard VERSION 1.6.2 LANGUAGES CXX)
+project(OpenclawGuard VERSION 1.6.3 LANGUAGES CXX)
 
 # 构建类型
 if(NOT CMAKE_BUILD_TYPE)

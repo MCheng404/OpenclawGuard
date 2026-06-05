@@ -25,6 +25,7 @@ public:
 
     // Openclaw 更新相关功能（通过 npm）
     void performOpenclawUpdate(const QString &channel = QString());  // npm install -g openclaw@latest
+    void fetchLatestVersionNpm(const QString &channel = QString()); // npm view openclaw version（只查不装）
     QString getCurrentVersion();   // openclaw --version
     QString getCurrentChannel();
     void getUpdateStatus();
@@ -45,6 +46,7 @@ signals:
     void openclawUpdateProgress(const QString &msg);
     void openclawUpdateFinished(bool success, const QString &msg);
     void openclawVersionReady(const QString &version);
+    void latestVersionFetched(const QString &version, const QString &error);
 
 private slots:
     void onReleasesReply(QNetworkReply *reply);

@@ -170,6 +170,7 @@ private:
     QLabel         *m_ocChannelLabel = nullptr;
     QLabel         *m_ocInstallLabel = nullptr;
     QLabel         *m_ocAvailableLabel = nullptr;
+    QLabel         *m_ocLatestVersionLabel = nullptr;
     QTextEdit      *m_ocDryRunOutput = nullptr;
     QProgressBar   *m_downloadProgress = nullptr;
 

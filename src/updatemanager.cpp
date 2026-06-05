@@ -260,6 +260,21 @@ void UpdateManager::onDownloadReply(QNetworkReply *reply)
 
 // ============== Openclaw 更新相关功能（通过 npm） ==============
 
+void UpdateManager::fetchLatestVersionNpm(const QString &channel)
+{
+    QString pkg = channel.toLower() == "beta" ? "openclaw@beta" : "openclaw";
+    QProcess proc;
+    proc.start("cmd", {"/c", "npm", "view", pkg, "version"});
+    proc.waitForFinished(10000);
+    QString version = cleanOutput(proc.readAllStandardOutput()).trimmed();
+    if (version.isEmpty() || version.contains("error", Qt::CaseInsensitive)) {
+        QString err = cleanOutput(proc.readAllStandardError());
+        emit latestVersionFetched(QString(), err.isEmpty() ? "npm 查询失败" : err);
+    } else {
+        emit latestVersionFetched(version, QString());
+    }
+}
+
 void UpdateManager::performOpenclawUpdate(const QString &channel)
 {
     if (m_openclawProcess->state() != QProcess::NotRunning) {
