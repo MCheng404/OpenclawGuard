@@ -456,6 +456,7 @@ void MainWindow::setupSidebar(QHBoxLayout *mainLayout)
 
     m_sidebarBrandCard = new QFrame();
     m_sidebarBrandCard->setObjectName("sidebarBrandCard");
+    m_sidebarGlassBrand = m_sidebarBrandCard;
     auto *brandLayout = new QVBoxLayout(m_sidebarBrandCard);
     brandLayout->setContentsMargins(14, 14, 14, 14);
     brandLayout->setSpacing(4);
@@ -505,6 +506,7 @@ void MainWindow::setupSidebar(QHBoxLayout *mainLayout)
 
     m_sidebarContextCard = new QFrame();
     m_sidebarContextCard->setObjectName("sidebarContextCard");
+    m_sidebarGlassContext = m_sidebarContextCard;
     auto *contextLayout = new QVBoxLayout(m_sidebarContextCard);
     contextLayout->setContentsMargins(14, 14, 14, 14);
     contextLayout->setSpacing(8);
@@ -590,6 +592,7 @@ void MainWindow::setupPages()
     activityCard->setProperty("dashboardCard", true);
     activityCard->setMinimumWidth(280);
     activityCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_activityCard = activityCard;
     auto *activityInner = static_cast<QVBoxLayout*>(activityCard->layout());
     auto *activityTitle = new QLabel("最近事件");
     activityTitle->setObjectName("sectionTitle");
@@ -2259,6 +2262,26 @@ void MainWindow::applyUiCustomization()
         card->setTintOpacity(tint);
         card->refreshStyle();
     }
+
+    // 侧边栏卡片跟随毛玻璃风格
+    auto applySidebarGlass = [&](QFrame *frame, bool isDark) {
+        if (!frame) return;
+        if (glass) {
+            QColor bg = isDark ? QColor(30, 35, 60, 120) : QColor(255, 255, 255, 140);
+            frame->setStyleSheet(frame->objectName() +
+                QString("{ background: rgba(%1,%2,%3,%4); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; }")
+                    .arg(bg.red()).arg(bg.green()).arg(bg.blue()).arg(bg.alpha()));
+        } else {
+            // 恢复原始样式（清除自定义 stylesheet）
+            frame->setStyleSheet("");
+        }
+    };
+
+    bool isDark = (AppSettings.theme() == "dark") ||
+                  (AppSettings.theme() == "system" && Theme::detectSystemTheme() == "dark");
+    applySidebarGlass(m_sidebarGlassBrand, isDark);
+    applySidebarGlass(m_sidebarGlassContext, isDark);
+
     update();
 }
 

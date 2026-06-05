@@ -157,6 +157,11 @@ private:
     QLabel       *m_glassTintLabel = nullptr;
     QWidget      *m_glassSlidersContainer = nullptr;
 
+    // 毛玻璃适配的非卡片组件
+    QFrame       *m_sidebarGlassBrand = nullptr;
+    QFrame       *m_sidebarGlassContext = nullptr;
+    QWidget      *m_activityCard = nullptr;  // activityList 的卡片容器
+
     void applyColorTemperature(int kelvin);
     void updateColorTempVisibility();
     void applyUiCustomization();

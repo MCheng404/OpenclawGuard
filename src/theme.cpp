@@ -165,7 +165,7 @@ QString Theme::darkStyleSheet()
         "QFrame[pageTopCard=\"true\"] { background: palette(base); border: 1px solid rgba(79,140,255,0.14); border-radius: 16px; }\n"
         "QFrame[pageTopCard=\"true\"]:hover { border: 1px solid rgba(79,140,255,0.26); background: palette(base); }\n"
         "QWidget#statAccentBar { background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 rgba(79,140,255,0.0), stop:0.3 rgba(79,140,255,0.4), stop:0.7 rgba(124,77,255,0.3), stop:1 rgba(124,77,255,0.0)); border: none; }\n"
-        "QLabel#statValue { font-size: 30px; font-weight: 300; color: #e2e4f0; font-family: \"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace; }\n"
+        "QLabel#statValue { font-size: 30px; font-weight: 300; color: #e2e4f0; font-family: \"JetBrains Mono\", \"Cascadia Code\", \"Consolas\", \"Courier New\", monospace; }\n"
         "QLabel#miniStatValue { font-size: 14px; font-weight: 600; color: #e2e4f0; }\n"
         "QLabel#statLabel { font-size: 11px; color: #8b8fa3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }\n"
         "QLabel#statusPill { color: #8fb4ff; background: rgba(79,140,255,0.12); border: 1px solid rgba(79,140,255,0.18); border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; }\n"        "QLabel#statusPill[variant=\"success\"] { color: #34d399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.18); }\n"        "QLabel#statusPill[variant=\"warning\"] { color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.18); }\n"        "QLabel#statusPill[variant=\"danger\"] { color: #f87171; background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.18); }\n"
@@ -275,7 +275,7 @@ QString Theme::lightStyleSheet()
         "QFrame[pageTopCard=\"true\"] { background: palette(base); border: 1px solid rgba(59,130,246,0.14); border-radius: 16px; }\n"
         "QFrame[pageTopCard=\"true\"]:hover { border: 1px solid rgba(59,130,246,0.22); background: palette(base); }\n"
         "QWidget#statAccentBar { background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 rgba(59,130,246,0.0), stop:0.3 rgba(59,130,246,0.35), stop:0.7 rgba(124,77,255,0.25), stop:1 rgba(124,77,255,0.0)); border: none; }\n"
-        "QLabel#statValue { font-size: 30px; font-weight: 300; color: #1e293b; font-family: \"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace; }\n"
+        "QLabel#statValue { font-size: 30px; font-weight: 300; color: #1e293b; font-family: \"JetBrains Mono\", \"Cascadia Code\", \"Consolas\", \"Courier New\", monospace; }\n"
         "QLabel#miniStatValue { font-size: 14px; font-weight: 600; color: #1e293b; }\n"
         "QLabel#statLabel { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }\n"
         "QLabel#statusPill { color: #2563eb; background: rgba(59,130,246,0.10); border: 1px solid rgba(59,130,246,0.16); border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; }\n"
@@ -349,3 +349,4 @@ QString Theme::lightStyleSheet()
         "QLabel#emptyState { color: #64748b; font-size: 12px; padding: 36px 24px; border: 1px dashed rgba(59,130,246,0.20); border-radius: 12px; background: rgba(59,130,246,0.03); }\n"
     );
 }
+
