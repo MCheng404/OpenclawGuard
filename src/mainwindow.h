@@ -139,8 +139,19 @@ private:
     QLabel       *m_colorTempValueLabel = nullptr;
     QWidget      *m_tempCard = nullptr;   // 色温卡片（浅色主题才显示）
 
+    // UI 自定义
+    ModernSlider *m_cardOpacitySlider = nullptr;
+    QLabel       *m_cardOpacityLabel = nullptr;
+    ModernSlider *m_cardRadiusSlider = nullptr;
+    QLabel       *m_cardRadiusLabel = nullptr;
+    ModernSlider *m_shadowSlider = nullptr;
+    QLabel       *m_shadowLabel = nullptr;
+    QWidget      *m_uiCustomCard = nullptr;
+    QVector<QFrame*> m_allShadowCards;  // 所有 ShadowCard 引用
+
     void applyColorTemperature(int kelvin);
     void updateColorTempVisibility();
+    void applyUiCustomization();
 
     // GitHub Token
     QLineEdit    *m_githubTokenEdit = nullptr;

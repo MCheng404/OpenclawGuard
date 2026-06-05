@@ -46,7 +46,7 @@ signals:
     void openclawUpdateProgress(const QString &msg);
     void openclawUpdateFinished(bool success, const QString &msg);
     void openclawVersionReady(const QString &version);
-    void latestVersionFetched(const QString &version, const QString &error);
+    void latestVersionFetched(const QString &version, const QString &error, const QString &stableVer = QString(), const QString &betaVer = QString());
 
 private slots:
     void onReleasesReply(QNetworkReply *reply);

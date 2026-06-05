@@ -51,12 +51,24 @@ public:
     explicit ShadowCard(QWidget *parent = nullptr) : QFrame(parent) {
         setContentsMargins(10, 10, 10, 10);
         setAttribute(Qt::WA_TranslucentBackground);
-        // 高斯模糊阴影
-        auto *shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(28);
-        shadow->setOffset(0, 6);
-        shadow->setColor(QColor(0, 0, 0, 50));
-        setGraphicsEffect(shadow);
+        m_shadow = new QGraphicsDropShadowEffect(this);
+        m_radius = AppSettings.cardRadius();
+        m_opacity = AppSettings.cardOpacity();
+        int si = AppSettings.shadowIntensity();
+        m_shadow->setBlurRadius(qBound(8, si * 56 / 100, 56));
+        m_shadow->setOffset(0, 6);
+        m_shadow->setColor(QColor(0, 0, 0, si * 80 / 100));
+        setGraphicsEffect(m_shadow);
+    }
+    void refreshStyle() {
+        int opacity = AppSettings.cardOpacity();
+        int radius = AppSettings.cardRadius();
+        int shadow = AppSettings.shadowIntensity();
+        m_shadow->setBlurRadius(qBound(8, shadow * 56 / 100, 56));
+        m_shadow->setColor(QColor(0, 0, 0, shadow * 80 / 100));
+        m_radius = radius;
+        m_opacity = opacity;
+        update();
     }
 protected:
     void paintEvent(QPaintEvent *) override {
@@ -65,20 +77,20 @@ protected:
 
         const int m = 10;
         QRect cardRect(m, m, width() - m*2, height() - m*2);
-        const int cr = 14;
+        int cr = m_radius;
 
-        // 用 palette 色（跟随色温）而非固定色
+        // 用 palette 色（跟随色温）
         QColor cardBg = palette().color(QPalette::Base);
+        cardBg.setAlpha(m_opacity * 255 / 100);
         QColor borderColor = palette().color(QPalette::Text);
         borderColor.setAlphaF(0.08);
 
-        // 卡片背景
         p.setBrush(cardBg);
         p.setPen(QPen(borderColor, 1));
         p.drawRoundedRect(cardRect, cr, cr);
 
-        // 顶部高光线（Material 风格微妙高光）
-        bool isDark = cardBg.value() < 128;
+        // 顶部高光线
+        bool isDark = palette().color(QPalette::Base).value() < 128;
         QLinearGradient topHighlight(cardRect.topLeft(), cardRect.topRight());
         topHighlight.setColorAt(0, QColor(255, 255, 255, 0));
         topHighlight.setColorAt(0.5, QColor(255, 255, 255, isDark ? 10 : 18));
@@ -89,6 +101,10 @@ protected:
 
         p.end();
     }
+private:
+    QGraphicsDropShadowEffect *m_shadow = nullptr;
+    int m_radius = 16;
+    int m_opacity = 100;
 };
 
 // 图标加载辅助
@@ -431,6 +447,7 @@ QFrame* MainWindow::createCard(QWidget *content)
     lay->setContentsMargins(20, 20, 20, 20);  // 内容不被阴影遮挡
     lay->setSpacing(12);
     if (content) lay->addWidget(content);
+    m_allShadowCards.append(card);
     return card;
 }
 
@@ -1137,6 +1154,9 @@ void MainWindow::setupPages()
             m_cpuSlider->setValue(80);
             m_memSlider->setValue(85);
             m_colorTempSlider->setValue(6500);
+            m_cardOpacitySlider->setValue(100);
+            m_cardRadiusSlider->setValue(16);
+            m_shadowSlider->setValue(50);
             m_themeCombo->setCurrentIndex(0);
             updateStatusBar("已恢复默认设置");
         }
@@ -1312,6 +1332,64 @@ void MainWindow::setupPages()
     scaleRow->addWidget(scaleCool);
     tempInner->addLayout(scaleRow);
     stLayout->addWidget(m_tempCard);
+
+    // 界面自定义
+    m_uiCustomCard = createCard();
+    m_uiCustomCard->setProperty("dashboardCard", true);
+    auto *uiInner = static_cast<QVBoxLayout*>(m_uiCustomCard->layout());
+    uiInner->setSpacing(12);
+    auto *uiHeader = new QHBoxLayout();
+    uiHeader->setSpacing(8);
+    auto *uiIcon = new QLabel();
+    uiIcon->setPixmap(loadSvgIcon("palette").pixmap(18, 18));
+    uiIcon->setFixedSize(22, 22);
+    auto *uiTitle = new QLabel("界面自定义");
+    uiTitle->setObjectName("sectionTitle");
+    uiHeader->addWidget(uiIcon);
+    uiHeader->addWidget(uiTitle);
+    uiHeader->addStretch();
+    uiInner->addLayout(uiHeader);
+    auto *uiDesc = new QLabel("调整卡片外观，打造个性化界面");
+    uiDesc->setObjectName("helperText");
+    uiInner->addWidget(uiDesc);
+
+    // 卡片透明度
+    auto *opRow = new QVBoxLayout(); opRow->setSpacing(6);
+    auto *opH = new QHBoxLayout(); opH->setSpacing(8);
+    auto *opL = new QLabel("卡片透明度"); opL->setObjectName("fieldLabel");
+    m_cardOpacityLabel = new QLabel(QString("%1%").arg(AppSettings.cardOpacity()));
+    m_cardOpacityLabel->setObjectName("sliderValueLabel");
+    opH->addWidget(opL); opH->addStretch(); opH->addWidget(m_cardOpacityLabel);
+    m_cardOpacitySlider = new ModernSlider();
+    m_cardOpacitySlider->setRange(30, 100); m_cardOpacitySlider->setValue(AppSettings.cardOpacity());
+    opRow->addLayout(opH); opRow->addWidget(m_cardOpacitySlider);
+    uiInner->addLayout(opRow);
+
+    // 圆角大小
+    auto *crRow = new QVBoxLayout(); crRow->setSpacing(6);
+    auto *crH = new QHBoxLayout(); crH->setSpacing(8);
+    auto *crL = new QLabel("圆角大小"); crL->setObjectName("fieldLabel");
+    m_cardRadiusLabel = new QLabel(QString("%1 px").arg(AppSettings.cardRadius()));
+    m_cardRadiusLabel->setObjectName("sliderValueLabel");
+    crH->addWidget(crL); crH->addStretch(); crH->addWidget(m_cardRadiusLabel);
+    m_cardRadiusSlider = new ModernSlider();
+    m_cardRadiusSlider->setRange(4, 24); m_cardRadiusSlider->setValue(AppSettings.cardRadius());
+    crRow->addLayout(crH); crRow->addWidget(m_cardRadiusSlider);
+    uiInner->addLayout(crRow);
+
+    // 阴影强度
+    auto *shRow = new QVBoxLayout(); shRow->setSpacing(6);
+    auto *shH = new QHBoxLayout(); shH->setSpacing(8);
+    auto *shL = new QLabel("阴影强度"); shL->setObjectName("fieldLabel");
+    m_shadowLabel = new QLabel(QString("%1%").arg(AppSettings.shadowIntensity()));
+    m_shadowLabel->setObjectName("sliderValueLabel");
+    shH->addWidget(shL); shH->addStretch(); shH->addWidget(m_shadowLabel);
+    m_shadowSlider = new ModernSlider();
+    m_shadowSlider->setRange(0, 100); m_shadowSlider->setValue(AppSettings.shadowIntensity());
+    shRow->addLayout(shH); shRow->addWidget(m_shadowSlider);
+    uiInner->addLayout(shRow);
+
+    stLayout->addWidget(m_uiCustomCard);
 
     // 更新与网络
     auto *tokenCard = createCard();
@@ -1491,6 +1569,23 @@ void MainWindow::setupConnections()
         applyColorTemperature(v);
     });
 
+    // UI 自定义滑动条
+    connect(m_cardOpacitySlider, &QSlider::valueChanged, this, [this](int v) {
+        m_cardOpacityLabel->setText(QString("%1%").arg(v));
+        AppSettings.setCardOpacity(v);
+        applyUiCustomization();
+    });
+    connect(m_cardRadiusSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_cardRadiusLabel->setText(QString("%1 px").arg(v));
+        AppSettings.setCardRadius(v);
+        applyUiCustomization();
+    });
+    connect(m_shadowSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_shadowLabel->setText(QString("%1%").arg(v));
+        AppSettings.setShadowIntensity(v);
+        applyUiCustomization();
+    });
+
     //   键盘快捷键
     auto *quitShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
     connect(quitShortcut, &QShortcut::activated, qApp, &QApplication::quit);
@@ -1627,9 +1722,14 @@ void MainWindow::setupConnections()
         m_updater->fetchLatestVersionNpm(channelValue);
     });
     connect(m_updater, &UpdateManager::latestVersionFetched, this,
-            [this](const QString &version, const QString &error) {
+            [this](const QString &version, const QString &error,
+                   const QString &stableVer, const QString &betaVer) {
         if (!version.isEmpty()) {
-            m_ocLatestVersionLabel->setText(version);
+            // 显示 stable + beta 版本
+            QString display = version;
+            if (!stableVer.isEmpty() && !betaVer.isEmpty() && stableVer != betaVer)
+                display = QString("%1 (beta: %2)").arg(stableVer, betaVer);
+            m_ocLatestVersionLabel->setText(display);
             // 对比当前版本和最新版本
             QString current = m_updater->getCurrentVersion();
             bool available = (!current.isEmpty() && current != version);
@@ -2121,6 +2221,13 @@ void MainWindow::updateColorTempVisibility()
     }
 }
 
+void MainWindow::applyUiCustomization()
+{
+    for (auto *frame : m_allShadowCards)
+        static_cast<ShadowCard*>(frame)->refreshStyle();
+    update();
+}
+
 void MainWindow::applyColorTemperature(int kelvin)
 {
     // 深色主题不应用色温
@@ -2175,8 +2282,8 @@ void MainWindow::applyColorTemperature(int kelvin)
         pal.setColor(role, blended);
     };
     blendBg(QPalette::Base);
-    blendBg(QPalette::Window);
     blendBg(QPalette::ToolTipBase);
+    // 不碰 Window 角色 — Mica 需要它保持原色
 
     qApp->setPalette(pal);
 

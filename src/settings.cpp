@@ -160,6 +160,15 @@ void Settings::setColorTemperature(int kelvin)
     s.setValue("ui/colorTemperature", kelvin);
 }
 
+int Settings::cardOpacity() const { return s.value("ui/cardOpacity", 100).toInt(); }
+void Settings::setCardOpacity(int pct) { s.setValue("ui/cardOpacity", pct); }
+int Settings::cardRadius() const { return s.value("ui/cardRadius", 16).toInt(); }
+void Settings::setCardRadius(int px) { s.setValue("ui/cardRadius", px); }
+int Settings::shadowIntensity() const { return s.value("ui/shadowIntensity", 50).toInt(); }
+void Settings::setShadowIntensity(int pct) { s.setValue("ui/shadowIntensity", pct); }
+QString Settings::accentColor() const { return s.value("ui/accentColor", "#4f8cff").toString(); }
+void Settings::setAccentColor(const QString &hex) { s.setValue("ui/accentColor", hex); }
+
 QByteArray Settings::windowGeometry() const
 {
     return s.value("ui/geometry").toByteArray();

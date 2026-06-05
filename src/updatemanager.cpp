@@ -1,4 +1,5 @@
 #include "updatemanager.h"
+#include <QVersionNumber>
 #include "config.h"
 #include "settings.h"
 #include <QNetworkReply>
@@ -262,17 +263,41 @@ void UpdateManager::onDownloadReply(QNetworkReply *reply)
 
 void UpdateManager::fetchLatestVersionNpm(const QString &channel)
 {
-    QString pkg = channel.toLower() == "beta" ? "openclaw@beta" : "openclaw";
-    QProcess proc;
-    proc.start("cmd", {"/c", "npm", "view", pkg, "version"});
-    proc.waitForFinished(10000);
-    QString version = cleanOutput(proc.readAllStandardOutput()).trimmed();
-    if (version.isEmpty() || version.contains("error", Qt::CaseInsensitive)) {
-        QString err = cleanOutput(proc.readAllStandardError());
-        emit latestVersionFetched(QString(), err.isEmpty() ? "npm 查询失败" : err);
-    } else {
-        emit latestVersionFetched(version, QString());
+    // 同时查 stable 和 beta，取最新版本
+    QString stableVer, betaVer;
+
+    QProcess proc1;
+    proc1.start("cmd", {"/c", "npm", "view", "openclaw", "version"});
+    proc1.waitForFinished(15000);
+    stableVer = cleanOutput(proc1.readAllStandardOutput()).trimmed();
+
+    QProcess proc2;
+    proc2.start("cmd", {"/c", "npm", "view", "openclaw@beta", "version"});
+    proc2.waitForFinished(15000);
+    betaVer = cleanOutput(proc2.readAllStandardOutput()).trimmed();
+
+    // 去掉可能的 "error" 响应
+    if (stableVer.contains("error", Qt::CaseInsensitive)) stableVer.clear();
+    if (betaVer.contains("error", Qt::CaseInsensitive)) betaVer.clear();
+
+    if (stableVer.isEmpty() && betaVer.isEmpty()) {
+        emit latestVersionFetched(QString(), "npm 查询失败");
+        return;
     }
+
+    // 比较版本，取更高版本
+    auto parseVer = [](const QString &v) -> QVersionNumber {
+        return QVersionNumber::fromString(v);
+    };
+
+    QString best = stableVer;
+    if (!betaVer.isEmpty()) {
+        if (best.isEmpty() || parseVer(betaVer) > parseVer(best))
+            best = betaVer;
+    }
+
+    // 同时返回 stable 和 beta 信息
+    emit latestVersionFetched(best, QString(), stableVer, betaVer);
 }
 
 void UpdateManager::performOpenclawUpdate(const QString &channel)

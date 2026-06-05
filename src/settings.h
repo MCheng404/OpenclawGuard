@@ -65,6 +65,16 @@ public:
     int  colorTemperature() const;
     void setColorTemperature(int kelvin);
 
+    // UI 自定义
+    int  cardOpacity() const;        // 0-100, 默认 100
+    void setCardOpacity(int pct);
+    int  cardRadius() const;         // 4-24, 默认 16
+    void setCardRadius(int px);
+    int  shadowIntensity() const;    // 0-100, 默认 50
+    void setShadowIntensity(int pct);
+    QString accentColor() const;     // hex, 默认 #4f8cff
+    void setAccentColor(const QString &hex);
+
     // 窗口状态
     QByteArray windowGeometry() const;
     void setWindowGeometry(const QByteArray &g);
