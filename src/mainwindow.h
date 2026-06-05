@@ -7,6 +7,7 @@
 #include "modernslider.h"
 #include <QPushButton>
 #include <QCheckBox>
+#include "toggle_switch.h"
 #include <QComboBox>
 #include <QTableWidget>
 #include <QProgressBar>
@@ -127,7 +128,7 @@ private:
     QComboBox    *m_themeCombo = nullptr;
 
     // 开机自启
-    QCheckBox    *m_autoStartCheck = nullptr;
+    ToggleSwitch *m_autoStartCheck = nullptr;
     ModernSlider *m_cpuSlider = nullptr;
     QLabel       *m_cpuValueLabel = nullptr;
     ModernSlider *m_memSlider = nullptr;

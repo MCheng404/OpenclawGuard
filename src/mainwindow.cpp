@@ -1098,6 +1098,48 @@ void MainWindow::setupPages()
     stLayout->setSpacing(16);
     stLayout->addWidget(createPageHeader("设置", "应用偏好与行为配置", "settings"));
 
+    // 重置设置（顶部醒目位置）
+    auto *resetCard = createCard();
+    resetCard->setProperty("dashboardCard", true);
+    auto *resetInner = static_cast<QVBoxLayout*>(resetCard->layout());
+    resetInner->setSpacing(10);
+    auto *resetHeader = new QHBoxLayout();
+    resetHeader->setSpacing(8);
+    auto *resetIcon = new QLabel();
+    resetIcon->setPixmap(loadSvgIcon("rotate-cw").pixmap(18, 18));
+    resetIcon->setFixedSize(22, 22);
+    auto *resetTitle = new QLabel("重置设置");
+    resetTitle->setObjectName("sectionTitle");
+    resetHeader->addWidget(resetIcon);
+    resetHeader->addWidget(resetTitle);
+    resetHeader->addStretch();
+    resetInner->addLayout(resetHeader);
+    auto *resetDesc = new QLabel("将所有设置恢复为默认值。这会重置智能拉起阈值、色温和主题");
+    resetDesc->setObjectName("helperText");
+    resetInner->addWidget(resetDesc);
+    auto *resetBtn = new QPushButton("恢复默认设置");
+    resetBtn->setObjectName("dangerBtn");
+    resetBtn->setCursor(Qt::PointingHandCursor);
+    resetBtn->setFixedWidth(140);
+    connect(resetBtn, &QPushButton::clicked, this, [this]() {
+        auto r = QMessageBox::question(this, "恢复默认",
+            "确定将所有设置恢复为默认值？\n\n"
+            "CPU: 80%  |  内存: 85%  |  色温: 6500K  |  主题: 跟随系统",
+            QMessageBox::Yes | QMessageBox::No);
+        if (r == QMessageBox::Yes) {
+            m_cpuSlider->setValue(80);
+            m_memSlider->setValue(85);
+            m_colorTempSlider->setValue(6500);
+            m_themeCombo->setCurrentIndex(0);
+            updateStatusBar("已恢复默认设置");
+        }
+    });
+    auto *resetBtnRow = new QHBoxLayout();
+    resetBtnRow->addWidget(resetBtn);
+    resetBtnRow->addStretch();
+    resetInner->addLayout(resetBtnRow);
+    stLayout->addWidget(resetCard);
+
     // 基础偏好
     auto *baseCard = createCard();
     baseCard->setProperty("pageTopCard", true);
@@ -1136,9 +1178,13 @@ void MainWindow::setupPages()
     auto *autoLabel = new QLabel("开机自启");
     autoLabel->setObjectName("fieldLabel");
     autoLabel->setFixedWidth(80);
-    m_autoStartCheck = new QCheckBox("登录 Windows 时自动启动");
+    m_autoStartCheck = new ToggleSwitch();
+    m_autoStartCheck->setToolTip("登录 Windows 时自动启动 OpenclawGuard");
+    auto *autoHint = new QLabel("登录 Windows 时自动启动");
+    autoHint->setObjectName("helperText");
     autoRow->addWidget(autoLabel);
     autoRow->addWidget(m_autoStartCheck);
+    autoRow->addWidget(autoHint);
     autoRow->addStretch();
     baseInner->addLayout(autoRow);
     stLayout->addWidget(baseCard);
@@ -1259,30 +1305,6 @@ void MainWindow::setupPages()
     scaleRow->addWidget(scaleCool);
     tempInner->addLayout(scaleRow);
     stLayout->addWidget(m_tempCard);
-
-    // 恢复默认
-    auto *resetRow = new QHBoxLayout();
-    resetRow->setSpacing(8);
-    auto *resetBtn = new QPushButton("恢复默认设置");
-    resetBtn->setObjectName("secondaryBtn");
-    resetBtn->setIcon(loadSvgIcon("rotate-cw"));
-    resetBtn->setCursor(Qt::PointingHandCursor);
-    connect(resetBtn, &QPushButton::clicked, this, [this]() {
-        auto r = QMessageBox::question(this, "恢复默认",
-            "确定将所有设置恢复为默认值？\n\n"
-            "CPU: 80%  |  内存: 85%  |  色温: 6500K  |  主题: 跟随系统",
-            QMessageBox::Yes | QMessageBox::No);
-        if (r == QMessageBox::Yes) {
-            m_cpuSlider->setValue(80);
-            m_memSlider->setValue(85);
-            m_colorTempSlider->setValue(6500);
-            m_themeCombo->setCurrentIndex(0);
-            updateStatusBar("已恢复默认设置");
-        }
-    });
-    resetRow->addStretch();
-    resetRow->addWidget(resetBtn);
-    stLayout->addLayout(resetRow);
 
     // 更新与网络
     auto *tokenCard = createCard();
@@ -1649,7 +1671,7 @@ void MainWindow::setupConnections()
             this, &MainWindow::onThemeChanged);
 
     // 开机自启
-    connect(m_autoStartCheck, &QCheckBox::toggled, this, [this](bool on) {
+    connect(m_autoStartCheck, &QAbstractButton::toggled, this, [this](bool on) {
         AppSettings.setAutoStart(on);
 #ifdef Q_OS_WIN
         QSettings reg(R"(HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run)",
