@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue?style=flat-square)
 ![Qt](https://img.shields.io/badge/Qt-6.11.1-41cd52?style=flat-square&logo=qt)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat-square&logo=cplusplus)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-orange?style=flat-square)
 
 </div>
 
@@ -149,7 +149,7 @@ OpenclawGuard/
 
 ## 许可证
 
-[MIT License](LICENSE)
+[CC BY-NC 4.0](LICENSE) — 禁止商业用途
 
 ---
 

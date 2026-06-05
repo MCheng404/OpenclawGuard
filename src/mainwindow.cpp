@@ -1422,13 +1422,6 @@ void MainWindow::setupUI()
     bodyRow->addWidget(m_pages, 1);
     root->addLayout(bodyRow, 1);
 
-    // 色温叠加层（半透明覆盖整个窗口）
-    m_colorOverlay = new QWidget(central);
-    m_colorOverlay->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_colorOverlay->setAttribute(Qt::WA_TranslucentBackground, true);
-    m_colorOverlay->setStyleSheet("background: transparent;");
-    m_colorOverlay->hide();
-
     // 状态栏
     auto *statusBar = new QStatusBar();
     m_statusMsg = new QLabel("就绪");
@@ -2063,28 +2056,52 @@ void MainWindow::onThemeChanged(int idx)
 
 void MainWindow::applyColorTemperature(int kelvin)
 {
-    if (!m_colorOverlay) return;
+    // 重新应用主题（基于当前主题色），再叠加色温偏移
+    QString theme = AppSettings.theme();
+    Theme::applyTheme(theme);
 
     if (kelvin == 6500) {
-        // 中性色温，隐藏叠加层
-        m_colorOverlay->hide();
+        // 中性色温，使用原始主题色
+        Theme::enableMica(winId());
+        style()->unpolish(this);
+        style()->polish(this);
+        update();
         return;
     }
 
-    // 计算色温颜色
+    // 色温 → RGB，计算混合比例
     QColor tempColor = ModernSlider::kelvinToRGB(kelvin);
+    qreal dist = qAbs(kelvin - 6500.0) / 3500.0;  // 0~1
+    qreal factor = qBound(0.0, dist * 0.35, 0.40);  // 最大混合 40%
 
-    // 色温偏移越大，叠加层越明显
-    // 3000K → alpha 35,  7000K → alpha 35,  6500K → 0
-    qreal dist = qAbs(kelvin - 6500.0) / 500.0;  // 0~1
-    int alpha = qBound(0, (int)(dist * 35), 45);
+    // 获取当前调色板并叠加色温
+    QPalette pal = qApp->palette();
 
-    m_colorOverlay->setStyleSheet(
-        QString("background: rgba(%1, %2, %3, %4);")
-            .arg(tempColor.red()).arg(tempColor.green())
-            .arg(tempColor.blue()).arg(alpha));
-    m_colorOverlay->show();
-    m_colorOverlay->raise();
+    auto blend = [&](QPalette::ColorRole role) {
+        QColor orig = pal.color(role);
+        QColor blended;
+        blended.setRgbF(
+            orig.redF()   * (1 - factor) + tempColor.redF()   * factor,
+            orig.greenF() * (1 - factor) + tempColor.greenF() * factor,
+            orig.blueF()  * (1 - factor) + tempColor.blueF()  * factor
+        );
+        pal.setColor(role, blended);
+    };
+
+    // 只染文字和背景，不碰高亮/按钮等交互色
+    blend(QPalette::WindowText);
+    blend(QPalette::Text);
+    blend(QPalette::Base);
+    blend(QPalette::Window);
+    blend(QPalette::ToolTipText);
+    blend(QPalette::ToolTipBase);
+
+    qApp->setPalette(pal);
+
+    Theme::enableMica(winId());
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -2112,9 +2129,6 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
     updateResponsiveLayout();
-    if (m_colorOverlay && m_colorOverlay->isVisible() && centralWidget()) {
-        m_colorOverlay->setGeometry(centralWidget()->rect());
-    }
 }
 
 // ====================== 页面卡片交错入场动画 ======================

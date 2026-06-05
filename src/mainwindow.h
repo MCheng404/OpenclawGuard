@@ -136,7 +136,6 @@ private:
     // 色温
     ModernSlider *m_colorTempSlider = nullptr;
     QLabel       *m_colorTempValueLabel = nullptr;
-    QWidget      *m_colorOverlay = nullptr;  // 色温叠加层
 
     void applyColorTemperature(int kelvin);
 
