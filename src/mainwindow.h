@@ -153,12 +153,8 @@ private:
     ToggleSwitch *m_glassToggle = nullptr;
     ModernSlider *m_glassBlurSlider = nullptr;
     QLabel       *m_glassBlurLabel = nullptr;
-    ModernSlider *m_glassRefractionSlider = nullptr;
-    QLabel       *m_glassRefractionLabel = nullptr;
-    ModernSlider *m_glassGlowSlider = nullptr;
-    QLabel       *m_glassGlowLabel = nullptr;
-    ModernSlider *m_glassNoiseSlider = nullptr;
-    QLabel       *m_glassNoiseLabel = nullptr;
+    ModernSlider *m_glassTintSlider = nullptr;
+    QLabel       *m_glassTintLabel = nullptr;
     QWidget      *m_glassSlidersContainer = nullptr;
 
     void applyColorTemperature(int kelvin);

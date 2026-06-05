@@ -1101,10 +1101,8 @@ void MainWindow::setupPages()
             m_cardRadiusSlider->setValue(16);
             m_shadowSlider->setValue(50);
             m_glassToggle->setChecked(false);
-            m_glassBlurSlider->setValue(18);
-            m_glassRefractionSlider->setValue(45);
-            m_glassGlowSlider->setValue(35);
-            m_glassNoiseSlider->setValue(4);
+            m_glassBlurSlider->setValue(20);
+            m_glassTintSlider->setValue(30);
             m_themeCombo->setCurrentIndex(0);
             updateStatusBar("已恢复默认设置");
         }
@@ -1349,13 +1347,13 @@ void MainWindow::setupPages()
     auto *glassIcon = new QLabel();
     glassIcon->setPixmap(loadSvgIcon("droplets").pixmap(18, 18));
     glassIcon->setFixedSize(22, 22);
-    auto *glassTitle = new QLabel("Liquid Glass");
+    auto *glassTitle = new QLabel("毛玻璃效果");
     glassTitle->setObjectName("sectionTitle");
     glassHeader->addWidget(glassIcon);
     glassHeader->addWidget(glassTitle);
     glassHeader->addStretch();
     glassInner->addLayout(glassHeader);
-    auto *glassDesc = new QLabel("iOS 风格液体玻璃效果，折射模糊背景 + 辉光边缘 + 色散");
+    auto *glassDesc = new QLabel("Frosted Glass 风格，抓取背景模糊后叠加半透明色调");
     glassDesc->setObjectName("helperText");
     glassInner->addWidget(glassDesc);
 
@@ -1371,36 +1369,31 @@ void MainWindow::setupPages()
     glassToggleRow->addStretch();
     glassInner->addLayout(glassToggleRow);
 
-    // 参数滑动条容器（开关控制显示/隐藏）
+    // 参数滑动条
     m_glassSlidersContainer = new QWidget();
-    auto *glassSlidersLayout = new QVBoxLayout(m_glassSlidersContainer);
-    glassSlidersLayout->setContentsMargins(0, 0, 0, 0);
-    glassSlidersLayout->setSpacing(12);
+    auto *gsl = new QVBoxLayout(m_glassSlidersContainer);
+    gsl->setContentsMargins(0, 0, 0, 0);
+    gsl->setSpacing(12);
 
-    auto addGlassSlider = [&](const QString &label, int min, int max, int val, int step,
-                              ModernSlider *&slider, QLabel *&valLabel) {
+    auto addGS = [&](const QString &label, int min, int max, int val,
+                     ModernSlider *&slider, QLabel *&valLabel) {
         auto *row = new QVBoxLayout(); row->setSpacing(6);
         auto *h = new QHBoxLayout(); h->setSpacing(8);
         auto *l = new QLabel(label); l->setObjectName("fieldLabel");
-        valLabel = new QLabel(QString("%1").arg(val));
+        valLabel = new QLabel(QString::number(val));
         valLabel->setObjectName("sliderValueLabel");
         h->addWidget(l); h->addStretch(); h->addWidget(valLabel);
         slider = new ModernSlider();
         slider->setRange(min, max);
-        slider->setSingleStep(step);
         slider->setValue(val);
         row->addLayout(h); row->addWidget(slider);
-        glassSlidersLayout->addLayout(row);
+        gsl->addLayout(row);
     };
 
-    addGlassSlider("模糊强度", 4, 40, AppSettings.liquidGlassBlur(), 1,
-                   m_glassBlurSlider, m_glassBlurLabel);
-    addGlassSlider("折射强度", 10, 80, AppSettings.liquidGlassRefraction(), 1,
-                   m_glassRefractionSlider, m_glassRefractionLabel);
-    addGlassSlider("辉光强度", 0, 80, AppSettings.liquidGlassGlow(), 1,
-                   m_glassGlowSlider, m_glassGlowLabel);
-    addGlassSlider("噪点强度", 0, 20, AppSettings.liquidGlassNoise(), 1,
-                   m_glassNoiseSlider, m_glassNoiseLabel);
+    addGS("模糊强度", 4, 40, AppSettings.liquidGlassBlur(),
+          m_glassBlurSlider, m_glassBlurLabel);
+    addGS("色调叠加", 0, 80, AppSettings.liquidGlassTint(),
+          m_glassTintSlider, m_glassTintLabel);
 
     m_glassSlidersContainer->setVisible(AppSettings.liquidGlassEnabled());
     glassInner->addWidget(m_glassSlidersContainer);
@@ -1612,19 +1605,9 @@ void MainWindow::setupConnections()
         AppSettings.setLiquidGlassBlur(v);
         applyUiCustomization();
     });
-    connect(m_glassRefractionSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_glassRefractionLabel->setText(QString::number(v));
-        AppSettings.setLiquidGlassRefraction(v);
-        applyUiCustomization();
-    });
-    connect(m_glassGlowSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_glassGlowLabel->setText(QString::number(v));
-        AppSettings.setLiquidGlassGlow(v);
-        applyUiCustomization();
-    });
-    connect(m_glassNoiseSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_glassNoiseLabel->setText(QString::number(v));
-        AppSettings.setLiquidGlassNoise(v);
+    connect(m_glassTintSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_glassTintLabel->setText(QString::number(v));
+        AppSettings.setLiquidGlassTint(v);
         applyUiCustomization();
     });
 
@@ -2267,17 +2250,13 @@ void MainWindow::applyUiCustomization()
 {
     bool glass = AppSettings.liquidGlassEnabled();
     int blur = AppSettings.liquidGlassBlur();
-    float refr = AppSettings.liquidGlassRefraction() / 100.0f;
-    float glow = AppSettings.liquidGlassGlow() / 100.0f;
-    float noise = AppSettings.liquidGlassNoise() / 100.0f;
+    int tint = AppSettings.liquidGlassTint();
 
     for (auto *frame : m_allShadowCards) {
         auto *card = static_cast<LiquidGlassCard*>(frame);
         card->setGlassEnabled(glass);
         card->setBlurRadius(blur);
-        card->setRefraction(refr);
-        card->setGlowIntensity(glow);
-        card->setNoiseAmount(noise);
+        card->setTintOpacity(tint);
         card->refreshStyle();
     }
     update();

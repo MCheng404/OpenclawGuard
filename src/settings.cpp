@@ -171,14 +171,10 @@ void Settings::setAccentColor(const QString &hex) { s.setValue("ui/accentColor",
 
 bool Settings::liquidGlassEnabled() const { return s.value("ui/liquidGlass", false).toBool(); }
 void Settings::setLiquidGlassEnabled(bool on) { s.setValue("ui/liquidGlass", on); }
-int Settings::liquidGlassBlur() const { return s.value("ui/glassBlur", 18).toInt(); }
+int Settings::liquidGlassBlur() const { return s.value("ui/glassBlur", 20).toInt(); }
 void Settings::setLiquidGlassBlur(int r) { s.setValue("ui/glassBlur", r); }
-int Settings::liquidGlassRefraction() const { return s.value("ui/glassRefraction", 45).toInt(); }
-void Settings::setLiquidGlassRefraction(int pct) { s.setValue("ui/glassRefraction", pct); }
-int Settings::liquidGlassGlow() const { return s.value("ui/glassGlow", 35).toInt(); }
-void Settings::setLiquidGlassGlow(int pct) { s.setValue("ui/glassGlow", pct); }
-int Settings::liquidGlassNoise() const { return s.value("ui/glassNoise", 4).toInt(); }
-void Settings::setLiquidGlassNoise(int pct) { s.setValue("ui/glassNoise", pct); }
+int Settings::liquidGlassTint() const { return s.value("ui/glassTint", 30).toInt(); }
+void Settings::setLiquidGlassTint(int pct) { s.setValue("ui/glassTint", pct); }
 
 QByteArray Settings::windowGeometry() const
 {
