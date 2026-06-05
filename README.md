@@ -11,7 +11,7 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat-square&logo=cplusplus)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-orange?style=flat-square)
 
-**版本 / Version: v1.6.3** | [更新日志 / Changelog](CHANGELOG.md)
+**版本 / Version: v1.6.4** | [更新日志 / Changelog](CHANGELOG.md)
 
 [**English**](#features) | [**中文**](#功能特性)
 

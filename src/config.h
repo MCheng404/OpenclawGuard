@@ -9,7 +9,7 @@
 
 // 版本号
 #ifndef APP_VERSION
-#define APP_VERSION "1.6.3"
+#define APP_VERSION "1.6.4"
 #endif
 
 // Debug 日志宏

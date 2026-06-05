@@ -66,17 +66,22 @@ protected:
         const int m = 10;
         QRect cardRect(m, m, width() - m*2, height() - m*2);
         const int cr = 14;
-        auto cs = Theme::currentColors();
+
+        // 用 palette 色（跟随色温）而非固定色
+        QColor cardBg = palette().color(QPalette::Base);
+        QColor borderColor = palette().color(QPalette::Text);
+        borderColor.setAlphaF(0.08);
 
         // 卡片背景
-        p.setBrush(cs.cardBg);
-        p.setPen(QPen(cs.borderColor, 1));
+        p.setBrush(cardBg);
+        p.setPen(QPen(borderColor, 1));
         p.drawRoundedRect(cardRect, cr, cr);
 
-        // 顶部高光线（亚克力质感）
+        // 顶部高光线（Material 风格微妙高光）
+        bool isDark = cardBg.value() < 128;
         QLinearGradient topHighlight(cardRect.topLeft(), cardRect.topRight());
         topHighlight.setColorAt(0, QColor(255, 255, 255, 0));
-        topHighlight.setColorAt(0.5, QColor(255, 255, 255, cs.mainBg.value() < 128 ? 12 : 20));
+        topHighlight.setColorAt(0.5, QColor(255, 255, 255, isDark ? 10 : 18));
         topHighlight.setColorAt(1, QColor(255, 255, 255, 0));
         p.setPen(QPen(QBrush(topHighlight), 1));
         p.setBrush(Qt::NoBrush);
@@ -2152,10 +2157,26 @@ void MainWindow::applyColorTemperature(int kelvin)
         pal.setColor(role, blended);
     };
 
-    // 只染文字，不碰背景和交互色
+    // 染文字（较强）
     blendText(QPalette::WindowText);
     blendText(QPalette::Text);
     blendText(QPalette::ToolTipText);
+
+    // 染背景底色（极淡，只让卡片带色温感）
+    qreal bgFactor = qBound(0.0, dist * 0.08, 0.12);  // 最大 12%
+    auto blendBg = [&](QPalette::ColorRole role) {
+        QColor orig = pal.color(role);
+        QColor blended;
+        blended.setRgbF(
+            orig.redF()   * (1 - bgFactor) + tempColor.redF()   * bgFactor,
+            orig.greenF() * (1 - bgFactor) + tempColor.greenF() * bgFactor,
+            orig.blueF()  * (1 - bgFactor) + tempColor.blueF()  * bgFactor
+        );
+        pal.setColor(role, blended);
+    };
+    blendBg(QPalette::Base);
+    blendBg(QPalette::Window);
+    blendBg(QPalette::ToolTipBase);
 
     qApp->setPalette(pal);
 
