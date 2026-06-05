@@ -136,8 +136,10 @@ private:
     // 色温
     ModernSlider *m_colorTempSlider = nullptr;
     QLabel       *m_colorTempValueLabel = nullptr;
+    QWidget      *m_tempCard = nullptr;   // 色温卡片（浅色主题才显示）
 
     void applyColorTemperature(int kelvin);
+    void updateColorTempVisibility();
 
     // GitHub Token
     QLineEdit    *m_githubTokenEdit = nullptr;

@@ -1202,10 +1202,10 @@ void MainWindow::setupPages()
     smartInner->addLayout(memRow);
     stLayout->addWidget(smartCard);
 
-    // 色温调节
-    auto *tempCard = createCard();
-    tempCard->setProperty("dashboardCard", true);
-    auto *tempInner = static_cast<QVBoxLayout*>(tempCard->layout());
+    // 色温调节（仅浅色主题可用）
+    m_tempCard = createCard();
+    m_tempCard->setProperty("dashboardCard", true);
+    auto *tempInner = static_cast<QVBoxLayout*>(m_tempCard->layout());
     tempInner->setSpacing(12);
     auto *tempHeader = new QHBoxLayout();
     tempHeader->setSpacing(8);
@@ -1218,7 +1218,7 @@ void MainWindow::setupPages()
     tempHeader->addWidget(tempTitle);
     tempHeader->addStretch();
     tempInner->addLayout(tempHeader);
-    auto *tempDesc = new QLabel("调整屏幕色温冷暖，数值越低越暖（偏黄），越高越冷（偏蓝）");
+    auto *tempDesc = new QLabel("调整界面色温冷暖，仅浅色主题生效。数值越低越暖（偏黄），越高越冷（偏蓝）");
     tempDesc->setObjectName("helperText");
     tempInner->addWidget(tempDesc);
 
@@ -1258,7 +1258,7 @@ void MainWindow::setupPages()
     scaleRow->addWidget(scaleNeutral);
     scaleRow->addWidget(scaleCool);
     tempInner->addLayout(scaleRow);
-    stLayout->addWidget(tempCard);
+    stLayout->addWidget(m_tempCard);
 
     // 恢复默认
     auto *resetRow = new QHBoxLayout();
@@ -2051,17 +2051,37 @@ void MainWindow::onThemeChanged(int idx)
     style()->unpolish(this);
     style()->polish(this);
     update();
+    updateColorTempVisibility();
     updateStatusBar("主题已切换");
+}
+
+void MainWindow::updateColorTempVisibility()
+{
+    if (!m_tempCard) return;
+    bool isDark = (AppSettings.theme() == "dark");
+    m_tempCard->setVisible(!isDark);
+    if (isDark) {
+        // 深色模式重置色温，恢复原始调色板
+        Theme::applyTheme("dark");
+        Theme::enableMica(winId());
+        style()->unpolish(this);
+        style()->polish(this);
+        update();
+    } else {
+        applyColorTemperature(m_colorTempSlider->value());
+    }
 }
 
 void MainWindow::applyColorTemperature(int kelvin)
 {
-    // 重新应用主题（基于当前主题色），再叠加色温偏移
-    QString theme = AppSettings.theme();
-    Theme::applyTheme(theme);
+    // 深色主题不应用色温
+    if (AppSettings.theme() == "dark") return;
+
+    // 重新应用浅色主题，再叠加色温偏移
+    Theme::applyTheme("light");
 
     if (kelvin == 6500) {
-        // 中性色温，使用原始主题色
+        // 中性色温，使用原始浅色主题色
         Theme::enableMica(winId());
         style()->unpolish(this);
         style()->polish(this);
@@ -2269,6 +2289,8 @@ void MainWindow::applyTheme()
         else if (idx == 1) m_sidebarThemeLabel->setText("浅色模式");
         else m_sidebarThemeLabel->setText("深色模式");
     }
+
+    updateColorTempVisibility();
 
     //   解冻 + 强制全量重绘
     setUpdatesEnabled(true);
