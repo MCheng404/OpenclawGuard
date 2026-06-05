@@ -435,6 +435,8 @@ QFrame* MainWindow::createStatCard(const QString &iconName, const QString &label
 
     valueLabel = new QLabel(initialValue);
     valueLabel->setObjectName("statValue");
+    valueLabel->setWordWrap(false);
+    valueLabel->setAlignment(Qt::AlignCenter);
     lay->addWidget(valueLabel);
 
     auto *label = new QLabel(labelText);
@@ -1505,6 +1507,7 @@ void MainWindow::setupPages()
     auto *githubLink = new QPushButton("  MCheng404/OpenclawGuard");
     githubLink->setObjectName("githubLinkBtn");
     githubLink->setIcon(loadSvgIcon("github"));
+    githubLink->setStyleSheet("QPushButton#githubLinkBtn { background: transparent; border: none; color: #4f8cff; font-size: 12px; padding: 2px 6px; } QPushButton#githubLinkBtn:hover { color: #6ba0ff; text-decoration: underline; }");
     githubLink->setCursor(Qt::PointingHandCursor);
     githubLink->setToolTip("在浏览器中打开 GitHub 项目");
     connect(githubLink, &QPushButton::clicked, this, []() {
@@ -2484,6 +2487,10 @@ void MainWindow::loadSettings()
         m_githubTokenEdit->setText(savedToken);
 
     m_loading = false;
+
+    // 应用 UI 自定义和色温
+    applyUiCustomization();
+    applyColorTemperature(m_colorTempSlider ? m_colorTempSlider->value() : 6500);
 }
 
 void MainWindow::saveSettings() {}

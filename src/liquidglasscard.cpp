@@ -9,6 +9,8 @@
 #include <QApplication>
 #include <QtMath>
 #include <QTimer>
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
 
 LiquidGlassCard::LiquidGlassCard(QWidget *parent)
     : QFrame(parent)
@@ -70,72 +72,82 @@ void LiquidGlassCard::scheduleRebuild()
 {
     if (m_rebuildPending) return;
     m_rebuildPending = true;
-    QTimer::singleShot(50, this, [this]() {
-        m_rebuildPending = false;
-        rebuildGlass();
-        update();
-    });
-}
 
-void LiquidGlassCard::rebuildGlass()
-{
-    // 找到顶层父窗口
+    // 抓取在主线程（需要 widget 坐标），处理丢到后台线程
     QWidget *root = parentWidget();
-    while (root && !root->isWindow())
-        root = root->parentWidget();
+    while (root && !root->isWindow()) root = root->parentWidget();
     if (!root) root = window();
-    if (!root || !root->isVisible()) return;
+    if (!root || !root->isVisible()) { m_rebuildPending = false; return; }
 
-    // ① 抓取整个窗口
     QPixmap full = root->grab();
-    if (full.isNull()) return;
+    if (full.isNull()) { m_rebuildPending = false; return; }
 
-    // ② 裁剪卡片区域
     QPoint offset = mapTo(root, QPoint(0, 0));
     int ox = qBound(0, offset.x(), full.width() - 1);
     int oy = qBound(0, offset.y(), full.height() - 1);
     int ow = qMin(width(), full.width() - ox);
     int oh = qMin(height(), full.height() - oy);
-    if (ow <= 4 || oh <= 4) return;
+    if (ow <= 4 || oh <= 4) { m_rebuildPending = false; return; }
     QPixmap cropped = full.copy(ox, oy, ow, oh);
 
-    // ③ 降采样 → 模糊 → 上采样
-    int sw = qMax(1, cropped.width() / 2);
-    int sh = qMax(1, cropped.height() / 2);
-    QPixmap small = cropped.scaled(sw, sh, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-
-    QGraphicsBlurEffect *blur = new QGraphicsBlurEffect();
-    blur->setBlurRadius(qMax(1, m_blurRadius / 2));
-    blur->setBlurHints(QGraphicsBlurEffect::PerformanceHint);
-
-    QGraphicsScene scene;
-    QGraphicsPixmapItem *item = scene.addPixmap(small);
-    item->setGraphicsEffect(blur);
-
-    QPixmap blurredSmall(small.size());
-    blurredSmall.fill(Qt::transparent);
-    {
-        QPainter p(&blurredSmall);
-        scene.render(&p, QRectF(), QRectF(0, 0, small.width(), small.height()));
-        p.end();
-    }
-
-    // 放大回原尺寸
-    QImage result = blurredSmall.toImage().scaled(
-        cropped.width(), cropped.height(),
-        Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-
-    // ④ 叠加一层半透明色调（根据当前主题）
+    int blurR = m_blurRadius;
+    int tintOp = m_tintOpacity;
     bool isDark = palette().color(QPalette::Base).value() < 128;
-    QPainter gp(&result);
-    gp.setRenderHint(QPainter::Antialiasing, true);
-    QColor tint = isDark ? QColor(30, 35, 60) : QColor(255, 255, 255);
-    tint.setAlpha(m_tintOpacity * 255 / 100);
-    gp.fillRect(result.rect(), tint);
-    gp.end();
+    int dstW = cropped.width();
+    int dstH = cropped.height();
 
-    m_glassResult = result;
-    m_glassReady = true;
+    // 后台线程处理模糊 + 色调
+    if (m_watcher) {
+        m_watcher->cancel();
+        m_watcher->deleteLater();
+    }
+    m_watcher = new QFutureWatcher<QImage>(this);
+    connect(m_watcher, &QFutureWatcher<QImage>::finished, this, [this, dstW, dstH]() {
+        m_rebuildPending = false;
+        if (m_watcher && m_watcher->isCanceled()) return;
+        m_glassResult = m_watcher->result();
+        if (!m_glassResult.isNull()) {
+            m_glassReady = true;
+            update();
+        }
+    });
+
+    m_watcher->setFuture(QtConcurrent::run(
+        [cropped, blurR, tintOp, isDark, dstW, dstH]() -> QImage {
+            // 降采样
+            int sw = qMax(1, dstW / 2);
+            int sh = qMax(1, dstH / 2);
+            QPixmap small = cropped.scaled(sw, sh, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+            // 模糊
+            QGraphicsBlurEffect *blur = new QGraphicsBlurEffect();
+            blur->setBlurRadius(qMax(1, blurR / 2));
+            blur->setBlurHints(QGraphicsBlurEffect::PerformanceHint);
+
+            QGraphicsScene scene;
+            QGraphicsPixmapItem *item = scene.addPixmap(small);
+            item->setGraphicsEffect(blur);
+
+            QPixmap blurredSmall(small.size());
+            blurredSmall.fill(Qt::transparent);
+            QPainter p(&blurredSmall);
+            scene.render(&p, QRectF(), QRectF(0, 0, small.width(), small.height()));
+            p.end();
+
+            // 上采样
+            QImage result = blurredSmall.toImage().scaled(
+                dstW, dstH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+            // 色调叠加
+            QPainter gp(&result);
+            QColor tint = isDark ? QColor(30, 35, 60) : QColor(255, 255, 255);
+            tint.setAlpha(tintOp * 255 / 100);
+            gp.fillRect(result.rect(), tint);
+            gp.end();
+
+            return result;
+        }
+    ));
 }
 
 void LiquidGlassCard::paintEvent(QPaintEvent *)
