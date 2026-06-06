@@ -24,7 +24,7 @@ else()
     message(STATUS "构建 Release 版本")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg Xml)
 
 set(SOURCES
     src/main.cpp
@@ -68,6 +68,7 @@ target_link_libraries(OpenclawGuard PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::Svg
+    Qt6::Xml
 )
 
 if(WIN32)

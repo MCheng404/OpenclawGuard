@@ -14,6 +14,7 @@
 #include <QShowEvent>
 #include <QMessageBox>
 #include <QProcess>
+#include <QDomDocument>
 #include <QDateTime>
 #include <QStyle>
 #include <QDir>
@@ -208,6 +209,8 @@ public:
     explicit ActivityItemDelegate(QObject *parent = nullptr)
         : QStyledItemDelegate(parent) {}
 
+    void setFontPixelSize(int px) { m_fontPx = px; }
+
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override {
         painter->save();
@@ -243,7 +246,7 @@ public:
             ? (dark ? QColor(100, 110, 140) : QColor(148, 163, 184))
             : cs.textPrimary);
         QFont f = option.font;
-        f.setPixelSize(12);
+        f.setPixelSize(m_fontPx);
         painter->setFont(f);
         painter->drawText(r.adjusted(12, 6, -8, -6), Qt::AlignLeft | Qt::AlignVCenter | Qt::TextWordWrap,
                           index.data(Qt::DisplayRole).toString());
@@ -258,6 +261,9 @@ public:
         QRect bound = fm.boundingRect(QRect(0, 0, w, 1000), Qt::TextWordWrap, text);
         return QSize(option.rect.width(), qMax(36, bound.height() + 16));
     }
+
+private:
+    int m_fontPx = 12;
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -569,39 +575,168 @@ void MainWindow::setupPages()
     m_pages->setContentsMargins(0, 0, 0, 0);
 
     // ====== Page 0: Dashboard ======
-    auto *dashPage = new QWidget();
-    auto *dashLayout = new QVBoxLayout(dashPage);
+    m_dashPage = new QWidget();
+    auto *dashLayout = new QVBoxLayout(m_dashPage);
     dashLayout->setContentsMargins(24, 24, 24, 24);
     dashLayout->setSpacing(16);
-    dashLayout->addWidget(createPageHeader("仪表盘", "系统概览、运行状态与最近事件", "shield-check"));
+    m_dashHeader = createPageHeader("仪表盘", "系统概览、运行状态与最近事件", "shield-check");
+    dashLayout->addWidget(m_dashHeader);
 
-    auto *overviewRow = new QHBoxLayout();
-    overviewRow->setSpacing(16);
+    // ── 顶行：系统概览 + 系统资源 ──
+    auto *topRow = new QHBoxLayout();
+    topRow->setSpacing(16);
 
-    auto *statsPanel = new QWidget();
-    statsPanel->setMinimumWidth(400);
-    auto *statsGrid = new QGridLayout(statsPanel);
-    statsGrid->setContentsMargins(0, 0, 0, 0);
-    statsGrid->setHorizontalSpacing(16);
-    statsGrid->setVerticalSpacing(16);
-    statsGrid->addWidget(createStatCard("server", "网关状态", m_dashGwValue, "未启动", &m_dashGwStatus), 0, 0);
-    statsGrid->addWidget(createStatCard("shield-check", "守护进程数", m_dashGuardCount, "0"), 0, 1);
-    statsGrid->addWidget(createStatCard("download-cloud", "可用更新", m_dashUpdateCount, "0"), 1, 0);
-    statsGrid->addWidget(createStatCard("cpu", "环境项数", m_dashEnvCount, "0"), 1, 1);
-    overviewRow->addWidget(statsPanel, 2);
+    // --- 左：系统概览卡片（4 统计行 + 快捷操作） ---
+    m_overviewCard = createCard();
+    m_overviewCard->setProperty("dashboardCard", true);
+    m_overviewCard->setMinimumWidth(380);
+    auto *overviewLay = static_cast<QVBoxLayout*>(m_overviewCard->layout());
 
-    auto *activityCard = createCard();
-    activityCard->setProperty("dashboardCard", true);
-    activityCard->setMinimumWidth(280);
-    activityCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_activityCard = activityCard;
-    auto *activityInner = static_cast<QVBoxLayout*>(activityCard->layout());
-    auto *activityTitle = new QLabel("最近事件");
-    activityTitle->setObjectName("sectionTitle");
-    auto *activityDesc = new QLabel("保留最近 50 条关键状态与操作反馈");
-    activityDesc->setObjectName("helperText");
+    m_dashOvTitle = new QLabel("系统概览");
+    m_dashOvTitle->setObjectName("sectionTitle");
+    overviewLay->addWidget(m_dashOvTitle);
+
+    m_dashStatValues.clear();
+    m_dashHelperLabels.clear();
+    m_dashIcons.clear();
+
+    auto makeStatRow = [&](const QString &icon, const QString &label, QLabel *&valLabel, const QString &init, QLabel **dot = nullptr) {
+        auto *row = new QHBoxLayout();
+        row->setSpacing(10);
+        auto *ic = new QLabel();
+        ic->setPixmap(loadSvgIcon(icon).pixmap(20, 20));
+        ic->setFixedWidth(24);
+        m_dashIcons.append(ic);
+        row->addWidget(ic);
+        auto *lbl = new QLabel(label);
+        lbl->setObjectName("helperText");
+        m_dashHelperLabels.append(lbl);
+        row->addWidget(lbl);
+        row->addStretch();
+        if (dot) {
+            auto *d = new QLabel();
+            d->setFixedSize(10, 10);
+            d->setStyleSheet(QString("background: %1; border-radius: 5px;").arg(Theme::currentColors().textSecondary.name()));
+            *dot = d;
+            row->addWidget(d);
+        }
+        valLabel = new QLabel(init);
+        valLabel->setObjectName("statValue");
+        m_dashStatValues.append(valLabel);
+        row->addWidget(valLabel);
+        return row;
+    };
+
+    overviewLay->addLayout(makeStatRow("server", "网关状态", m_dashGwValue, "未启动", &m_dashGwStatus));
+    overviewLay->addLayout(makeStatRow("shield-check", "守护进程", m_dashGuardCount, "0"));
+    overviewLay->addLayout(makeStatRow("download-cloud", "可用更新", m_dashUpdateCount, "0"));
+    overviewLay->addLayout(makeStatRow("cpu", "环境项数", m_dashEnvCount, "0"));
+
+    // 分隔线
+    auto *dashSep = new QFrame();
+    dashSep->setFrameShape(QFrame::HLine);
+    dashSep->setObjectName("separator");
+    overviewLay->addSpacing(8);
+    overviewLay->addWidget(dashSep);
+    overviewLay->addSpacing(4);
+
+    // 快捷操作按钮
+    auto *quickBtns = new QHBoxLayout();
+    quickBtns->setSpacing(8);
+    m_dashStartBtn = new QPushButton("启动网关");
+    m_dashStartBtn->setObjectName("primaryBtn");
+    m_dashStartBtn->setIcon(loadSvgIcon("play"));
+    m_dashStopBtn = new QPushButton("停止网关");
+    m_dashStopBtn->setObjectName("secondaryBtn");
+    m_dashStopBtn->setIcon(loadSvgIcon("square"));
+    m_dashCheckBtn = new QPushButton("检查更新");
+    m_dashCheckBtn->setObjectName("secondaryBtn");
+    m_dashCheckBtn->setIcon(loadSvgIcon("refresh-cw"));
+    quickBtns->addWidget(m_dashStartBtn);
+    quickBtns->addWidget(m_dashStopBtn);
+    quickBtns->addWidget(m_dashCheckBtn);
+    quickBtns->addStretch();
+    overviewLay->addLayout(quickBtns);
+
+    connect(m_dashStartBtn, &QPushButton::clicked, this, [this]() {
+        if (!m_gateway->isGatewayRunning()) onStartStopGateway();
+    });
+    connect(m_dashStopBtn, &QPushButton::clicked, this, [this]() {
+        if (m_gateway->isGatewayRunning()) onStartStopGateway();
+    });
+    connect(m_dashCheckBtn, &QPushButton::clicked, this, &MainWindow::onFetchUpdates);
+
+    topRow->addWidget(m_overviewCard, 1);
+
+    // --- 右：系统资源卡片（CPU / 内存） ---
+    m_resCard = createCard();
+    m_resCard->setProperty("dashboardCard", true);
+    m_resCard->setMinimumWidth(260);
+    auto *resLay = static_cast<QVBoxLayout*>(m_resCard->layout());
+    resLay->setSpacing(14);
+
+    m_dashResTitle = new QLabel("系统资源");
+    m_dashResTitle->setObjectName("sectionTitle");
+    resLay->addWidget(m_dashResTitle);
+
+    m_dashResBars.clear();
+
+    auto makeResRow = [&](const QString &icon, const QString &name, QLabel *&valLbl, QProgressBar *&bar) {
+        auto *v = new QVBoxLayout();
+        v->setSpacing(6);
+        auto *header = new QHBoxLayout();
+        header->setSpacing(8);
+        auto *ic = new QLabel();
+        ic->setPixmap(loadSvgIcon(icon).pixmap(18, 18));
+        m_dashIcons.append(ic);
+        header->addWidget(ic);
+        auto *lbl = new QLabel(name);
+        lbl->setObjectName("helperText");
+        m_dashHelperLabels.append(lbl);
+        header->addWidget(lbl);
+        header->addStretch();
+        valLbl = new QLabel("0%");
+        valLbl->setObjectName("statValue");
+        m_dashStatValues.append(valLbl);
+        header->addWidget(valLbl);
+        v->addLayout(header);
+        bar = new QProgressBar();
+        bar->setRange(0, 100);
+        bar->setValue(0);
+        bar->setFixedHeight(8);
+        bar->setTextVisible(false);
+        bar->setObjectName("resourceBar");
+        m_dashResBars.append(bar);
+        v->addWidget(bar);
+        return v;
+    };
+
+    resLay->addLayout(makeResRow("cpu", "CPU", m_dashCpuValue, m_dashCpuBar));
+    resLay->addLayout(makeResRow("activity", "内存", m_dashMemValue, m_dashMemBar));
+    resLay->addStretch();
+
+    topRow->addWidget(m_resCard, 1);
+    dashLayout->addLayout(topRow, 0);
+
+    // ── 最近事件（底部，占据剩余空间） ──
+    m_activityCard = createCard();
+    m_activityCard->setProperty("dashboardCard", true);
+    m_activityCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *activityInner = static_cast<QVBoxLayout*>(m_activityCard->layout());
+    auto *activityHeader = new QHBoxLayout();
+    activityHeader->setSpacing(12);
+    m_dashActTitle = new QLabel("最近事件");
+    m_dashActTitle->setObjectName("sectionTitle");
+    activityHeader->addWidget(m_dashActTitle);
+    activityHeader->addStretch();
     m_dashPortValue = new QLabel("监听端口 --");
     m_dashPortValue->setObjectName("statusPill");
+    activityHeader->addWidget(m_dashPortValue, 0, Qt::AlignRight);
+    activityInner->addLayout(activityHeader);
+    m_dashActDesc = new QLabel("保留最近 50 条关键状态与操作反馈");
+    m_dashActDesc->setObjectName("helperText");
+    m_dashHelperLabels.append(m_dashActDesc);
+    activityInner->addWidget(m_dashActDesc);
     m_activityList = new QListWidget();
     m_activityList->setObjectName("activityList");
     m_activityList->setSelectionMode(QAbstractItemView::NoSelection);
@@ -611,61 +746,30 @@ void MainWindow::setupPages()
     m_activityList->setUniformItemSizes(false);
     m_activityList->setWordWrap(true);
     m_activityList->setSpacing(4);
-    m_activityList->setMinimumHeight(160);
+    m_activityList->setMinimumHeight(200);
     m_activityList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_activityList->setItemDelegate(new ActivityItemDelegate(m_activityList));
+    m_activityList->setItemDelegate(m_activityDelegate = new ActivityItemDelegate(m_activityList));
     auto *idleItem = new QListWidgetItem("等待系统事件...");
     idleItem->setData(Qt::UserRole, "placeholder");
     idleItem->setFlags(idleItem->flags() & ~Qt::ItemIsSelectable);
     m_activityList->addItem(idleItem);
-    activityInner->addWidget(activityTitle);
-    activityInner->addWidget(activityDesc);
-    activityInner->addWidget(m_dashPortValue, 0, Qt::AlignLeft);
     activityInner->addWidget(m_activityList, 1);
-    overviewRow->addWidget(activityCard, 1);
-    dashLayout->addLayout(overviewRow);
+    dashLayout->addWidget(m_activityCard, 1);
 
-    auto *quickCard = createCard();
-    quickCard->setProperty("dashboardCard", true);
-    auto *quickCardLayout = static_cast<QVBoxLayout*>(quickCard->layout());
-    auto *quickTitle = new QLabel("快捷操作");
-    quickTitle->setObjectName("sectionTitle");
-    auto *quickDesc = new QLabel("高频维护动作会直接作用于当前配置与更新通道");
-    quickDesc->setObjectName("helperText");
-    quickCardLayout->addWidget(quickTitle);
-    quickCardLayout->addWidget(quickDesc);
-    auto *quickBtns = new QHBoxLayout();
-    quickBtns->setSpacing(8);
-    auto *startGwBtn = new QPushButton();
-    startGwBtn->setObjectName("primaryBtn");
-    startGwBtn->setText("启动网关");
-    startGwBtn->setIcon(loadSvgIcon("play"));
-    auto *stopGwBtn = new QPushButton();
-    stopGwBtn->setObjectName("secondaryBtn");
-    stopGwBtn->setText("停止网关");
-    stopGwBtn->setIcon(loadSvgIcon("square"));
-    auto *checkUpBtn = new QPushButton();
-    checkUpBtn->setObjectName("secondaryBtn");
-    checkUpBtn->setText("检查更新");
-    checkUpBtn->setIcon(loadSvgIcon("refresh-cw"));
-    quickBtns->addWidget(startGwBtn);
-    quickBtns->addWidget(stopGwBtn);
-    quickBtns->addWidget(checkUpBtn);
-    quickBtns->addStretch();
-    quickCardLayout->addLayout(quickBtns);
-
-    connect(startGwBtn, &QPushButton::clicked, this, [this]() {
-        if (!m_gateway->isGatewayRunning()) onStartStopGateway();
+    // 系统资源定时刷新
+    m_resourceTimer = new QTimer(this);
+    m_resourceTimer->setInterval(3000);
+    connect(m_resourceTimer, &QTimer::timeout, this, [this]() {
+        int cpu = m_guard->getCpuUsage();
+        int mem = m_guard->getMemUsage();
+        m_dashCpuValue->setText(QString("%1%").arg(cpu));
+        m_dashCpuBar->setValue(cpu);
+        m_dashMemValue->setText(QString("%1%").arg(mem));
+        m_dashMemBar->setValue(mem);
     });
-    connect(stopGwBtn, &QPushButton::clicked, this, [this]() {
-        if (m_gateway->isGatewayRunning()) onStartStopGateway();
-    });
-    connect(checkUpBtn, &QPushButton::clicked, this, &MainWindow::onFetchUpdates);
+    m_resourceTimer->start();
 
-    dashLayout->addWidget(quickCard);
-
-    dashLayout->addStretch();
-    m_pages->addWidget(dashPage);
+    m_pages->addWidget(m_dashPage);
 
     // ====== Page 1: 网关管理 ======
     auto *gwPage = new QWidget();
@@ -731,7 +835,69 @@ void MainWindow::setupPages()
     portRow->addStretch(3);
     cfgInner->addLayout(portRow);
     gwLayout->addWidget(cfgCard);
+
+    // OpenClaw 计划任务设置
+    auto *taskCard = createCard();
+    taskCard->setProperty("dashboardCard", true);
+    auto *taskInner = static_cast<QVBoxLayout*>(taskCard->layout());
+    taskInner->setSpacing(12);
+    auto *taskHeader = new QHBoxLayout();
+    taskHeader->setSpacing(8);
+    auto *taskIcon = new QLabel();
+    taskIcon->setPixmap(loadSvgIcon("cpu").pixmap(18, 18));
+    taskIcon->setFixedSize(22, 22);
+    auto *taskTitle = new QLabel("计划任务");
+    taskTitle->setObjectName("sectionTitle");
+    taskHeader->addWidget(taskIcon);
+    taskHeader->addWidget(taskTitle);
+    taskHeader->addStretch();
+    m_taskStatusIcon = new QLabel();
+    m_taskStatusIcon->setFixedSize(16, 16);
+    taskHeader->addWidget(m_taskStatusIcon);
+    taskInner->addLayout(taskHeader);
+    auto *taskDesc = new QLabel("OpenClaw Gateway 计划任务的登录模式。S4U 模式无需用户登录即可运行，适合无头服务器");
+    taskDesc->setObjectName("helperText");
+    taskDesc->setWordWrap(true);
+    taskInner->addWidget(taskDesc);
+
+    auto *taskStatusRow = new QHBoxLayout();
+    taskStatusRow->setSpacing(10);
+    auto *logonLabel = new QLabel("当前模式:");
+    logonLabel->setObjectName("helperText");
+    taskStatusRow->addWidget(logonLabel);
+    m_taskLogonLabel = new QLabel("检测中...");
+    m_taskLogonLabel->setObjectName("statValue");
+    m_taskLogonLabel->setStyleSheet("font-size: 14px; font-weight: 600;");
+    taskStatusRow->addWidget(m_taskLogonLabel);
+    taskStatusRow->addStretch();
+    taskInner->addLayout(taskStatusRow);
+
+    auto *taskBtnRow = new QHBoxLayout();
+    taskBtnRow->setSpacing(8);
+    m_taskSwitchBtn = new QPushButton("切换为 S4U");
+    m_taskSwitchBtn->setObjectName("primaryBtn");
+    m_taskSwitchBtn->setIcon(loadSvgIcon("refresh-cw"));
+    m_taskSwitchBtn->setEnabled(false);
+    auto *taskRefreshBtn = new QPushButton("刷新状态");
+    taskRefreshBtn->setObjectName("secondaryBtn");
+    taskRefreshBtn->setIcon(loadSvgIcon("refresh-cw"));
+    taskBtnRow->addWidget(m_taskSwitchBtn);
+    taskBtnRow->addWidget(taskRefreshBtn);
+    taskBtnRow->addStretch();
+    taskInner->addLayout(taskBtnRow);
+
+    connect(m_taskSwitchBtn, &QPushButton::clicked, this, [this]() {
+        QString current = m_taskLogonLabel->text();
+        if (current == "S4U")
+            setTaskLogonType("InteractiveToken");
+        else
+            setTaskLogonType("S4U");
+    });
+    connect(taskRefreshBtn, &QPushButton::clicked, this, &MainWindow::refreshTaskLogonType);
+
+    gwLayout->addWidget(taskCard);
     gwLayout->addStretch();
+    QTimer::singleShot(500, this, &MainWindow::refreshTaskLogonType);
     m_pages->addWidget(gwPage);
 
     // ====== Page 2: 进程 ======
@@ -2385,6 +2551,9 @@ void MainWindow::animatePageCards(QWidget *page)
 {
     if (!page) return;
 
+    // 毛玻璃启用时禁用卡片动画（避免 grab() 与模糊重建竞态）
+    if (AppSettings.liquidGlassEnabled()) return;
+
     // 收集页面内所有卡片
     QList<QFrame*> cards;
     std::function<void(QWidget*)> findCards = [&](QWidget *w) {
@@ -2494,6 +2663,155 @@ void MainWindow::loadSettings()
 }
 
 void MainWindow::saveSettings() {}
+
+void MainWindow::refreshTaskLogonType()
+{
+    // 查询 OpenClaw Gateway 计划任务的 LogonType
+    QProcess proc;
+    proc.start("schtasks", {"/query", "/tn", "\\OpenClaw Gateway", "/xml"});
+    proc.waitForFinished(8000);
+    QString xmlOutput = proc.readAllStandardOutput();
+
+    if (proc.exitCode() != 0 || xmlOutput.isEmpty()) {
+        m_taskLogonLabel->setText("未安装");
+        m_taskLogonLabel->setStyleSheet("font-size: 14px; font-weight: 600; color: #f87171;");
+        m_taskSwitchBtn->setEnabled(false);
+        m_taskStatusIcon->setPixmap(loadSvgIcon("alert-triangle").pixmap(16, 16));
+        return;
+    }
+
+    // 解析 XML 获取 LogonType
+    QDomDocument doc;
+    if (!doc.setContent(xmlOutput)) {
+        m_taskLogonLabel->setText("解析失败");
+        m_taskSwitchBtn->setEnabled(false);
+        return;
+    }
+
+    // 查找 <LogonType> 元素
+    QString logonType;
+    QDomNodeList principals = doc.elementsByTagName("Principal");
+    if (principals.count() > 0) {
+        QDomNodeList children = principals.at(0).childNodes();
+        for (int i = 0; i < children.count(); ++i) {
+            if (children.at(i).nodeName() == "LogonType") {
+                logonType = children.at(i).toElement().text();
+                break;
+            }
+        }
+    }
+
+    if (logonType.isEmpty()) {
+        // 没有显式 LogonType，Windows 默认是 InteractiveToken
+        logonType = "InteractiveToken (默认)";
+    }
+
+    m_taskLogonLabel->setText(logonType);
+    m_taskSwitchBtn->setEnabled(true);
+
+    if (logonType == "S4U") {
+        m_taskLogonLabel->setStyleSheet("font-size: 14px; font-weight: 600; color: #34d399;");
+        m_taskSwitchBtn->setText("切换为 InteractiveToken");
+        m_taskStatusIcon->setPixmap(loadSvgIcon("check-circle").pixmap(16, 16));
+    } else {
+        m_taskLogonLabel->setStyleSheet("font-size: 14px; font-weight: 600; color: #fbbf24;");
+        m_taskSwitchBtn->setText("切换为 S4U");
+        m_taskStatusIcon->setPixmap(loadSvgIcon("alert-triangle").pixmap(16, 16));
+    }
+}
+
+void MainWindow::setTaskLogonType(const QString &logonType)
+{
+    // 导出当前任务 XML
+    QProcess proc;
+    proc.start("schtasks", {"/query", "/tn", "\\OpenClaw Gateway", "/xml"});
+    proc.waitForFinished(8000);
+    QString xmlOutput = proc.readAllStandardOutput();
+
+    if (proc.exitCode() != 0 || xmlOutput.isEmpty()) {
+        QMessageBox::warning(this, "错误", "无法读取计划任务 XML");
+        return;
+    }
+
+    // 修改 LogonType
+    QDomDocument doc;
+    if (!doc.setContent(xmlOutput)) {
+        QMessageBox::warning(this, "错误", "解析计划任务 XML 失败");
+        return;
+    }
+
+    QDomNodeList principals = doc.elementsByTagName("Principal");
+    if (principals.count() == 0) {
+        QMessageBox::warning(this, "错误", "XML 中未找到 Principal 元素");
+        return;
+    }
+
+    QDomElement principal = principals.at(0).toElement();
+    QDomNodeList children = principal.childNodes();
+    QDomElement logonElem;
+    bool found = false;
+    for (int i = 0; i < children.count(); ++i) {
+        if (children.at(i).nodeName() == "LogonType") {
+            logonElem = children.at(i).toElement();
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        logonElem.firstChild().setNodeValue(logonType);
+    } else {
+        // 创建 LogonType 元素
+        QDomElement newElem = doc.createElement("LogonType");
+        QDomText text = doc.createTextNode(logonType);
+        newElem.appendChild(text);
+        principal.appendChild(newElem);
+    }
+
+    // 保存到临时文件
+    QString tmpXml = QDir::tempPath() + "/openclaw-gateway-task.xml";
+    QFile f(tmpXml);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "错误", "无法写入临时 XML 文件");
+        return;
+    }
+    QTextStream ts(&f);
+    ts.setEncoding(QStringConverter::Utf16);
+    ts << doc.toString();
+    f.close();
+
+    // 需要管理员权限执行 schtasks /create
+    // 使用 PowerShell Start-Process -Verb RunAs 提权
+    QString cmd = QString(
+        "schtasks /create /tn \"\\OpenClaw Gateway\" /xml \"%1\" /F"
+    ).arg(tmpXml);
+
+    QProcess elevated;
+    elevated.start("powershell", {
+        "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-Command",
+        QString("Start-Process powershell -Verb RunAs -Wait -ArgumentList '") +
+        "-NoProfile -ExecutionPolicy Bypass -Command \"" + cmd + "\"'"
+    });
+    elevated.waitForFinished(30000);
+
+    // 刷新状态
+    refreshTaskLogonType();
+
+    QString current = m_taskLogonLabel->text();
+    if (current == logonType) {
+        updateStatusBar(QString("计划任务已切换为 %1").arg(logonType));
+        QMessageBox::information(this, "成功",
+            QString("计划任务 LogonType 已切换为 %1\n\n%2").arg(logonType,
+                logonType == "S4U"
+                    ? "S4U 模式下任务无需用户交互即可运行，不会弹出窗口。"
+                    : "InteractiveToken 模式需要用户登录会话才能运行。"));
+    } else {
+        QMessageBox::warning(this, "提示",
+            "切换可能未成功，请确认 UAC 提权时点了「是」。\n"
+            "如需手动修改，请以管理员身份运行：\n" + cmd);
+    }
+}
 
 void MainWindow::applyTheme()
 {
@@ -2609,6 +2927,126 @@ void MainWindow::updateResponsiveLayout()
     m_sidebarBrandCard->style()->polish(m_sidebarBrandCard);
     m_sidebarContextCard->style()->unpolish(m_sidebarContextCard);
     m_sidebarContextCard->style()->polish(m_sidebarContextCard);
+
+    updateDashboardScale();
+}
+
+void MainWindow::updateDashboardScale()
+{
+    if (!m_dashPage) return;
+
+    // 基于窗口尺寸计算缩放因子（参考尺寸 1280×800）
+    const qreal refW = 1280.0, refH = 800.0;
+    qreal scaleW = static_cast<qreal>(width()) / refW;
+    qreal scaleH = static_cast<qreal>(height()) / refH;
+    qreal scale = qBound(0.70, qMin(scaleW, scaleH), 1.50);
+
+    auto sp = [scale](int base) -> int { return qRound(base * scale); };
+    auto cs = Theme::currentColors();
+    QString primaryColor = cs.textPrimary.name();
+    QString secondaryColor = cs.textSecondary.name();
+    QString helperColor = QColor::fromHsl(cs.textSecondary.hslHue(),
+                          cs.textSecondary.hslSaturation() / 2,
+                          cs.textSecondary.lightness()).name();
+
+    // ── 页面标题（完整样式覆盖） ──
+    if (m_dashHeader) {
+        for (auto *child : m_dashHeader->findChildren<QLabel*>()) {
+            if (child->objectName() == "pageTitle") {
+                child->setStyleSheet(QString(
+                    "font-size: %1px; font-weight: 700; color: %2; letter-spacing: -0.5px;"
+                ).arg(sp(24)).arg(primaryColor));
+            } else if (child->objectName() == "pageDesc") {
+                child->setStyleSheet(QString(
+                    "font-size: %1px; color: %2;"
+                ).arg(sp(11)).arg(secondaryColor));
+            }
+        }
+    }
+
+    // ── 统计数值（完整样式覆盖） ──
+    for (int i = 0; i < m_dashStatValues.size(); ++i) {
+        int baseSize = (i < 4) ? 20 : 24;
+        m_dashStatValues[i]->setStyleSheet(QString(
+            "font-size: %1px; font-weight: 300; color: %2; font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;"
+        ).arg(sp(baseSize)).arg(primaryColor));
+    }
+
+    // ── 辅助标签（完整样式覆盖） ──
+    for (auto *lbl : m_dashHelperLabels) {
+        lbl->setStyleSheet(QString(
+            "font-size: %1px; color: %2;"
+        ).arg(sp(11)).arg(helperColor));
+    }
+
+    // ── 卡片小标题（完整样式覆盖） ──
+    auto applySectionTitle = [&](QLabel *lbl) {
+        if (!lbl) return;
+        lbl->setStyleSheet(QString(
+            "font-size: %1px; font-weight: 700; color: %2; padding: 0 0 2px 2px; text-transform: uppercase; letter-spacing: 0.5px;"
+        ).arg(sp(12)).arg(secondaryColor));
+    };
+    applySectionTitle(m_dashOvTitle);
+    applySectionTitle(m_dashResTitle);
+    applySectionTitle(m_dashActTitle);
+
+    // ── 按钮（完整样式覆盖，保留主题配色） ──
+    auto applyBtnFont = [&](QPushButton *btn, bool primary) {
+        if (!btn) return;
+        int fs = sp(13), pv = sp(9), ph = sp(20), mw = sp(96), mh = sp(38), br = sp(10);
+        if (primary) {
+            btn->setStyleSheet(QString(
+                "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #5a9aff,stop:1 #4080f0);"
+                "color: white; border: 1px solid rgba(140,183,255,0.16); border-radius: %1px;"
+                "padding: %2px %3px; min-width: %4px; min-height: %5px; font-weight: 700; font-size: %6px;"
+            ).arg(br).arg(pv).arg(ph).arg(mw).arg(mh).arg(fs));
+        } else {
+            btn->setStyleSheet(QString(
+                "background: rgba(79,140,255,0.06); color: #8fb4ff;"
+                "border: 1px solid rgba(79,140,255,0.22); border-radius: %1px;"
+                "padding: %2px %3px; min-width: %4px; min-height: %5px; font-size: %6px; font-weight: 600;"
+            ).arg(br).arg(pv).arg(ph).arg(mw).arg(mh).arg(fs));
+        }
+    };
+    applyBtnFont(m_dashStartBtn, true);
+    applyBtnFont(m_dashStopBtn, false);
+    applyBtnFont(m_dashCheckBtn, false);
+
+    // ── 状态药丸（完整样式覆盖） ──
+    if (m_dashPortValue) {
+        int fs = sp(11), pv = sp(6), ph = sp(12), br = 999;
+        m_dashPortValue->setStyleSheet(QString(
+            "color: #8fb4ff; background: rgba(79,140,255,0.12);"
+            "border: 1px solid rgba(79,140,255,0.18); border-radius: %1px;"
+            "padding: %2px %3px; font-size: %4px; font-weight: 600;"
+        ).arg(br).arg(pv).arg(ph).arg(fs));
+    }
+
+    // ── 活动列表（delegate 字体 + 布局） ──
+    if (m_activityList) {
+        if (m_activityDelegate)
+            m_activityDelegate->setFontPixelSize(sp(12));
+        m_activityList->setSpacing(sp(4));
+        m_activityList->setMinimumHeight(sp(200));
+        m_activityList->update(); // 触发 delegate 重绘
+    }
+
+    // ── 资源进度条高度 ──
+    int barH = sp(8);
+    for (auto *bar : m_dashResBars)
+        bar->setFixedHeight(barH);
+
+    // ── 卡片内边距 ──
+    int padH = sp(24), padV = sp(20);
+    for (auto *card : {m_overviewCard, m_resCard, m_activityCard}) {
+        if (card && card->layout())
+            card->layout()->setContentsMargins(padH, padV, padH, padV);
+    }
+
+    // ── 仪表盘页面边距 ──
+    int pp = sp(24);
+    if (m_dashPage->layout())
+        m_dashPage->layout()->setContentsMargins(pp, pp, pp, pp);
 }
 
 void MainWindow::updateGuardSelectionDetails()

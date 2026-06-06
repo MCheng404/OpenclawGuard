@@ -28,6 +28,10 @@ public:
     int  cpuThreshold() const      { return m_cpuThreshold; }
     int  memThreshold() const      { return m_memThreshold; }
 
+    // 系统资源查询（仪表盘用）
+    int  getCpuUsage();     // 0-100
+    int  getMemUsage();     // 0-100
+
     static QList<QPair<QString, QString>> listRunningProcesses();
 
 signals:
@@ -41,8 +45,6 @@ private slots:
 
 private:
     bool isSystemBusy();    // CPU 或内存是否超阈
-    int  getCpuUsage();     // 0-100
-    int  getMemUsage();     // 0-100
 
     QTimer              *m_timer = nullptr;
     QTimer              *m_retryTimer = nullptr;  // 等待系统空闲后重试

@@ -212,6 +212,11 @@ void ModernSlider::mouseMoveEvent(QMouseEvent *e)
 
 void ModernSlider::wheelEvent(QWheelEvent *e)
 {
+    // 仅在鼠标悬停或控件拥有焦点时响应滚轮，防止页面滚动时误触发
+    if (!underMouse() && !hasFocus()) {
+        e->ignore();
+        return;
+    }
     const int step = m_colorTemp ? 100 : 1;
     if (e->angleDelta().y() > 0)
         setValue(qMin(value() + step, maximum()));

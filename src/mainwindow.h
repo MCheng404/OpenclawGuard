@@ -166,8 +166,34 @@ private:
     void updateColorTempVisibility();
     void applyUiCustomization();
 
+    // 仪表盘自适应缩放
+    void updateDashboardScale();
+    QWidget     *m_dashPage = nullptr;
+    QWidget     *m_dashHeader = nullptr;
+    QWidget     *m_overviewCard = nullptr;
+    QWidget     *m_resCard = nullptr;
+    QLabel      *m_dashOvTitle = nullptr;
+    QLabel      *m_dashResTitle = nullptr;
+    QLabel      *m_dashActTitle = nullptr;
+    QLabel      *m_dashActDesc = nullptr;
+    QPushButton *m_dashStartBtn = nullptr;
+    QPushButton *m_dashStopBtn = nullptr;
+    QPushButton *m_dashCheckBtn = nullptr;
+    QVector<QLabel*> m_dashStatValues;
+    QVector<QLabel*> m_dashHelperLabels;
+    QVector<QLabel*> m_dashIcons;
+    QVector<QProgressBar*> m_dashResBars;
+    class ActivityItemDelegate *m_activityDelegate = nullptr;
+
     // GitHub Token
     QLineEdit    *m_githubTokenEdit = nullptr;
+
+    // OpenClaw 计划任务设置
+    QLabel       *m_taskLogonLabel = nullptr;
+    QLabel       *m_taskStatusIcon = nullptr;
+    QPushButton  *m_taskSwitchBtn = nullptr;
+    void refreshTaskLogonType();
+    void setTaskLogonType(const QString &logonType);
 
     // 网关管理
     GatewayManager *m_gateway = nullptr;
@@ -224,6 +250,11 @@ private:
     QLabel *m_dashUpdateCount = nullptr;
     QLabel *m_dashEnvCount = nullptr;
     QLabel *m_dashPortValue = nullptr;
+    QLabel *m_dashCpuValue = nullptr;
+    QLabel *m_dashMemValue = nullptr;
+    QProgressBar *m_dashCpuBar = nullptr;
+    QProgressBar *m_dashMemBar = nullptr;
+    QTimer *m_resourceTimer = nullptr;
     QListWidget *m_activityList = nullptr;
     QLabel *m_guardEmptyState = nullptr;
     QLabel *m_updateEmptyState = nullptr;
