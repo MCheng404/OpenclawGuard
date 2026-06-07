@@ -1,16 +1,14 @@
 #include "liquidglasscard.h"
+#include "fastblur.h"
+#include "glasslog.h"
 #include "settings.h"
 
 #include <QPainter>
 #include <QPainterPath>
 #include <QGraphicsEffect>
-#include <QGraphicsScene>
-#include <QGraphicsPixmapItem>
 #include <QApplication>
 #include <QtMath>
 #include <QTimer>
-#include <QtConcurrent/QtConcurrent>
-#include <QFutureWatcher>
 
 LiquidGlassCard::LiquidGlassCard(QWidget *parent)
     : QFrame(parent)
@@ -73,7 +71,12 @@ void LiquidGlassCard::scheduleRebuild()
     if (m_rebuildPending) return;
     m_rebuildPending = true;
 
-    // 抓取在主线程（需要 widget 坐标），处理丢到后台线程
+    // 延迟到下一个事件循环，避免在 paintEvent 内递归重建
+    QTimer::singleShot(0, this, &LiquidGlassCard::doRebuild);
+}
+
+void LiquidGlassCard::doRebuild()
+{
     QWidget *root = parentWidget();
     while (root && !root->isWindow()) root = root->parentWidget();
     if (!root) root = window();
@@ -88,66 +91,28 @@ void LiquidGlassCard::scheduleRebuild()
     int ow = qMin(width(), full.width() - ox);
     int oh = qMin(height(), full.height() - oy);
     if (ow <= 4 || oh <= 4) { m_rebuildPending = false; return; }
-    QPixmap cropped = full.copy(ox, oy, ow, oh);
 
-    int blurR = m_blurRadius;
-    int tintOp = m_tintOpacity;
+    QImage cropped = full.copy(ox, oy, ow, oh).toImage();
+    if (cropped.format() != QImage::Format_RGBA8888)
+        cropped = cropped.convertToFormat(QImage::Format_RGBA8888);
+
+    // ── 高性能模糊（CPU 多 pass box blur） ──
+    QImage blurred = FastBlur::blur(cropped, m_blurRadius, 2, 2);
+    if (blurred.isNull()) { m_rebuildPending = false; return; }
+
+    // ── 色调叠加 ──
     bool isDark = palette().color(QPalette::Base).value() < 128;
-    int dstW = cropped.width();
-    int dstH = cropped.height();
+    QPainter gp(&blurred);
+    QColor tint = isDark ? QColor(30, 35, 60) : QColor(255, 255, 255);
+    tint.setAlpha(m_tintOpacity * 255 / 100);
+    gp.fillRect(blurred.rect(), tint);
+    gp.end();
 
-    // 后台线程处理模糊 + 色调
-    if (m_watcher) {
-        m_watcher->cancel();
-        m_watcher->deleteLater();
-    }
-    m_watcher = new QFutureWatcher<QImage>(this);
-    connect(m_watcher, &QFutureWatcher<QImage>::finished, this, [this, dstW, dstH]() {
-        m_rebuildPending = false;
-        if (m_watcher && m_watcher->isCanceled()) return;
-        m_glassResult = m_watcher->result();
-        if (!m_glassResult.isNull()) {
-            m_glassReady = true;
-            update();
-        }
-    });
-
-    m_watcher->setFuture(QtConcurrent::run(
-        [cropped, blurR, tintOp, isDark, dstW, dstH]() -> QImage {
-            // 降采样
-            int sw = qMax(1, dstW / 2);
-            int sh = qMax(1, dstH / 2);
-            QPixmap small = cropped.scaled(sw, sh, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-
-            // 模糊
-            QGraphicsBlurEffect *blur = new QGraphicsBlurEffect();
-            blur->setBlurRadius(qMax(1, blurR / 2));
-            blur->setBlurHints(QGraphicsBlurEffect::PerformanceHint);
-
-            QGraphicsScene scene;
-            QGraphicsPixmapItem *item = scene.addPixmap(small);
-            item->setGraphicsEffect(blur);
-
-            QPixmap blurredSmall(small.size());
-            blurredSmall.fill(Qt::transparent);
-            QPainter p(&blurredSmall);
-            scene.render(&p, QRectF(), QRectF(0, 0, small.width(), small.height()));
-            p.end();
-
-            // 上采样
-            QImage result = blurredSmall.toImage().scaled(
-                dstW, dstH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-
-            // 色调叠加
-            QPainter gp(&result);
-            QColor tint = isDark ? QColor(30, 35, 60) : QColor(255, 255, 255);
-            tint.setAlpha(tintOp * 255 / 100);
-            gp.fillRect(result.rect(), tint);
-            gp.end();
-
-            return result;
-        }
-    ));
+    // 先设结果，再放行重建，再刷新
+    m_glassResult = blurred;
+    m_glassReady = true;
+    m_rebuildPending = false;  // 此刻起 paintEvent 可以正常绘制 glass
+    update();
 }
 
 void LiquidGlassCard::paintEvent(QPaintEvent *)

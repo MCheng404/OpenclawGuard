@@ -5,7 +5,6 @@
 #include <QPixmap>
 #include <QImage>
 #include <QPropertyAnimation>
-#include <QFutureWatcher>
 
 class LiquidGlassCard : public QFrame
 {
@@ -40,6 +39,7 @@ protected:
 
 private:
     void scheduleRebuild();
+    void doRebuild();
     void paintNormal(QPainter &p, const QRect &rect);
     void paintGlass(QPainter &p, const QRect &rect);
 
@@ -57,5 +57,4 @@ private:
     bool m_rebuildPending = false;
     qreal m_hoverAnim = 0.0;
     QPropertyAnimation *m_hoverAnimObj = nullptr;
-    QFutureWatcher<QImage> *m_watcher = nullptr;
 };

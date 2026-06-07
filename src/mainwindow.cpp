@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "config.h"
 #include "liquidglasscard.h"
+#include "glblurhelper.h"
 #include "settings.h"
 #include "theme.h"
 #include <QVBoxLayout>
@@ -330,7 +331,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 }
 
-MainWindow::~MainWindow() {}
+MainWindow::~MainWindow() { GLBlurHelper::instance()->cleanup(); }
 
 // ====================== UI 构建 ======================
 
@@ -1694,6 +1695,9 @@ void MainWindow::setupUI()
     auto *central = new QWidget(this);
     setCentralWidget(central);
     central->setContentsMargins(0, 0, 0, 0);
+
+    // 预初始化 GL 模糊上下文（避免首次毛玻璃重建延迟）
+    GLBlurHelper::instance();
 
     auto *root = new QVBoxLayout(central);
     root->setContentsMargins(0, 0, 0, 0);

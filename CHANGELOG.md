@@ -1,5 +1,21 @@
 # 更新日志
 
+## v1.9.8 (2026-06-07)
+
+### 新增
+- FastBlur 高性能模糊引擎（CPU 多 pass box blur，1080p 降采样后 < 3ms）
+- GLBlurHelper GPU 加速模糊（OpenGL 可分离高斯，预初始化避免首次延迟）
+- 毛玻璃重建改为同步单 pass（去掉 QtConcurrent + QFutureWatcher）
+
+### 优化
+- LiquidGlassCard 模糊引擎从 QGraphicsBlurEffect 切换到 FastBlur，大幅降低延迟
+- scheduleRebuild 延迟到下一个事件循环（避免 paintEvent 内递归重建）
+- OpenGL 依赖显式链接（Qt6::OpenGL），GL 资源析构时自动清理
+
+### 修复
+- 修复毛玻璃首次应用时的卡顿（预初始化 GL 上下文）
+- 版本号升级至 v1.9.8
+
 ## v1.6.0 (2026-06-06)
 
 ### 新增

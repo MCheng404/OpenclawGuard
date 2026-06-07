@@ -11,7 +11,7 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat-square&logo=cplusplus)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-orange?style=flat-square)
 
-**版本 / Version: v1.9.2** | [更新日志 / Changelog](CHANGELOG.md)
+**版本 / Version: v1.9.8** | [更新日志 / Changelog](CHANGELOG.md)
 
 [**English**](#features) | [**中文**](#功能特性)
 
@@ -50,7 +50,7 @@
 - One-click gateway restart
 
 ### UI
-- Windows 11 Mica / Acrylic blur effects
+- Windows 11 Mica / Acrylic blur effects + FastBlur/GLBlur dual engine
 - Dark / Light / System theme (dynamic switching, no restart)
 - Global color temperature adjustment (3000K–7000K, palette-level tinting)
 - Custom-painted ModernSlider (gradient track + circular handle + hover animation + custom tooltip)
@@ -128,7 +128,11 @@ OpenclawGuard/
 │   ├── settings.cpp/h        # Configuration persistence (QSettings)
 │   ├── config.h              # Constants
 │   ├── toggle_switch.cpp/h   # Custom toggle switch widget
-│   └── modernslider.cpp/h    # Custom slider (gradient track + color temp rendering)
+│   ├── modernslider.cpp/h    # Custom slider (gradient track + color temp rendering)
+│   ├── liquidglasscard.h/cpp # Liquid glass card (blur + tint)
+│   ├── fastblur.h/cpp        # CPU multi-pass box blur (< 3ms for 1080p)
+│   ├── glblurhelper.h/cpp    # OpenGL GPU Gaussian blur (separable 2-pass)
+│   └── glasslog.h            # Glass effect logging
 ├── resources/
 │   └── icons/                # SVG icons (Lucide)
 ├── docs/
@@ -196,7 +200,7 @@ OpenclawGuard/
 - 一键重启网关
 
 ### 界面
-- Windows 11 Mica / Acrylic 毛玻璃特效
+- Windows 11 Mica / Acrylic 毛玻璃特效 + FastBlur/GLBlur 双引擎
 - 深色 / 浅色 / 跟随系统主题（动态切换，无需重启）
 - 全局色温调节（3000K–7000K，调色板级染色）
 - 自定义绘制 ModernSlider（渐变轨道 + 圆形 handle + 悬浮动画 + 自绘 tooltip）
@@ -274,7 +278,11 @@ OpenclawGuard/
 │   ├── settings.cpp/h        # 配置持久化（QSettings）
 │   ├── config.h              # 常量定义
 │   ├── toggle_switch.cpp/h   # 自定义开关控件
-│   └── modernslider.cpp/h    # 自定义滑动条（渐变轨道 + 色温渲染）
+│   ├── modernslider.cpp/h    # 自定义滑动条（渐变轨道 + 色温渲染）
+│   ├── liquidglasscard.h/cpp # 毛玻璃卡片（模糊 + 色调叠加）
+│   ├── fastblur.h/cpp        # CPU 多 pass box blur（1080p < 3ms）
+│   ├── glblurhelper.h/cpp    # OpenGL GPU 高斯模糊（可分离两 pass）
+│   └── glasslog.h            # 毛玻璃效果日志
 ├── resources/
 │   └── icons/                # SVG 图标 (Lucide)
 ├── docs/

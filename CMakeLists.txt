@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenclawGuard VERSION 1.9.2 LANGUAGES CXX)
+project(OpenclawGuard VERSION 1.9.8 LANGUAGES CXX)
 
 # 构建类型
 if(NOT CMAKE_BUILD_TYPE)
@@ -24,7 +24,7 @@ else()
     message(STATUS "构建 Release 版本")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg Xml)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg Xml OpenGL OpenGLWidgets)
 
 set(SOURCES
     src/main.cpp
@@ -51,6 +51,11 @@ set(SOURCES
     src/modernslider.cpp
     src/liquidglasscard.h
     src/liquidglasscard.cpp
+    src/fastblur.h
+    src/fastblur.cpp
+    src/glasslog.h
+    src/glblurhelper.h
+    src/glblurhelper.cpp
     src/traymanager.h
     src/traymanager.cpp
     src/mica_helper.cpp
@@ -69,6 +74,7 @@ target_link_libraries(OpenclawGuard PRIVATE
     Qt6::Network
     Qt6::Svg
     Qt6::Xml
+    Qt6::OpenGL
 )
 
 if(WIN32)
